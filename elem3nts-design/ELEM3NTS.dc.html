@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&amp;family=Alegreya+Sans+SC:wght@500;700&amp;family=Cinzel:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>html,body{margin:0;height:100%;background:#040506;overflow:hidden}*{box-sizing:border-box}button{font-family:inherit}a{color:#d8b878}a:hover{color:#f0d58c}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(216,184,120,.25);border-radius:3px}</style>
+<script type="module" src="elem3nts-engine.js"></script>
+</helmet>
+<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#030405">
+<div ref="{{ appRef }}" style="position:relative;overflow:hidden;width:{{ appW }};height:{{ appH }};border-radius:{{ appR }};box-shadow:{{ appShadow }};background:#05080b;color:#e9e3d6;font-family:'Alegreya Sans',sans-serif;user-select:none;-webkit-user-select:none;container-type:size">
+<canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+
+<sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#05080b">
+<div style="font:700 34px/1 'Cinzel',serif;letter-spacing:.14em;color:#efe8da">ELEM3NTS</div>
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">{{ loadMsg }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:clamp(40px,9cqh,96px) 20px clamp(24px,5cqh,48px);background:linear-gradient(180deg,rgba(3,5,7,.55),rgba(3,5,7,0) 36%,rgba(3,5,7,0) 68%,rgba(3,5,7,.72));pointer-events:none">
+<div style="display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#b9ae98">Un duel élémentaire</div>
+<h1 style="margin:0;font:700 clamp(48px,10cqw,140px)/.9 'Cinzel',serif;letter-spacing:.1em;padding-left:.1em;color:#efe8da;text-shadow:0 4px 40px rgba(0,0,0,.85)">ELEM<span style="background:linear-gradient(170deg,oklch(0.82 0.16 52) 20%,oklch(0.8 0.12 228) 50%,oklch(0.84 0.15 145) 80%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 22px rgba(255,210,150,.3))">3</span>NTS</h1>
+<p style="margin:0;font:400 clamp(15px,1.7cqw,19px)/1.45 'Alegreya Sans',sans-serif;color:#cfc6b4;text-wrap:pretty;max-width:36ch;text-shadow:0 2px 16px #000">Le Feu, l’Eau et la Plante s’affrontent au cœur de l’arène oubliée.</p>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:18px;pointer-events:auto">
+<nav style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px 6px;max-width:680px">
+<button onClick="{{ goSetup }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.16em;color:#efe8da;background:none;border:none;padding:12px 16px;cursor:pointer;text-shadow:0 2px 14px #000" style-hover="color:#f0d58c">Jouer en local</button>
+<button onClick="{{ goOnline }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.16em;color:#efe8da;background:none;border:none;padding:12px 16px;cursor:pointer;text-shadow:0 2px 14px #000" style-hover="color:#f0d58c">Jouer en ligne</button>
+<button onClick="{{ goSettings }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.16em;color:#efe8da;background:none;border:none;padding:12px 16px;cursor:pointer;text-shadow:0 2px 14px #000" style-hover="color:#f0d58c">Réglages</button>
+<button onClick="{{ goRules }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.16em;color:#efe8da;background:none;border:none;padding:12px 16px;cursor:pointer;text-shadow:0 2px 14px #000" style-hover="color:#f0d58c">Règles du jeu</button>
+</nav>
+<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;gap:10px;font:500 14px/1 'Alegreya Sans',sans-serif;color:#cfc6b4;opacity:{{ pulse }};transition:opacity 1.2s ease;text-shadow:0 2px 12px #000">Appuyez sur <span style="height:28px;padding:0 12px;display:inline-flex;align-items:center;border:1px solid rgba(233,227,214,.4);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif;color:#efe8da">Espace</span> pour jouer en local</div>
+</sc-if>
+<sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ goSetup }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.14em;color:#0b0d0e;background:#d8b878;border:none;padding:16px 28px;border-radius:3px;cursor:pointer;min-height:48px">Touchez pour jouer</button>
+</sc-if>
+</div>
+</div>
+<div style="position:absolute;top:16px;left:18px;right:18px;display:flex;justify-content:space-between;gap:12px">
+<button onClick="{{ goDemo }}" style="font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#a79f8f;background:none;border:none;padding:8px 4px;cursor:pointer" style-hover="color:#d8b878">Démo des confrontations</button>
+<button onClick="{{ goNotes }}" style="font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#a79f8f;background:none;border:none;padding:8px 4px;cursor:pointer" style-hover="color:#d8b878">Notes de conception</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSetup }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding:20px 14px clamp(14px,5cqh,48px);background:linear-gradient(180deg,rgba(3,5,7,0) 40%,rgba(3,5,7,.7))">
+<div style="width:min(580px,100%);max-height:100%;overflow-y:auto;padding:26px 26px 22px;display:flex;flex-direction:column;gap:22px;background:rgba(8,11,13,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(216,184,120,.2);border-radius:6px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Partie locale · même écran</div>
+<div style="font:600 26px/1.1 'Cinzel',serif;letter-spacing:.06em">Préparer le duel</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Score cible</div><div style="font:500 16px/1.3 'Alegreya Sans',sans-serif;color:#cfc6b4">{{ targetLine }}</div></div>
+<div style="display:flex;align-items:center;gap:14px">
+<button onClick="{{ decTarget }}" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(233,227,214,.3);background:transparent;color:#efe8da;font:500 22px/1 'Cinzel',serif;cursor:pointer" style-hover="border-color:#d8b878">−</button>
+<div style="font:600 46px/1 'Cinzel',serif;min-width:1.3em;text-align:center">{{ target }}</div>
+<button onClick="{{ incTarget }}" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(233,227,214,.3);background:transparent;color:#efe8da;font:500 22px/1 'Cinzel',serif;cursor:pointer" style-hover="border-color:#d8b878">+</button>
+</div>
+</div>
+<div style="display:flex;gap:6px;justify-content:space-between">
+<sc-for list="{{ pips }}" as="pp" hint-placeholder-count="10">
+<button onClick="{{ pp.onClick }}" aria-label="{{ pp.aria }}" style="flex:1;height:30px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span style="width:11px;height:11px;transform:rotate(45deg);border:1px solid #d8b878;background:{{ pp.bg }};transition:background .2s"></span></button>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding-top:4px;border-top:1px solid rgba(233,227,214,.08)">
+<div style="display:flex;flex-direction:column;gap:10px;padding-top:14px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Joueur 1</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.fire }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.15 52)">Feu</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.water }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.11 228)">Eau</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.plant }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.82 0.14 145)">Plante</span></div>
+</div></div>
+<div style="display:flex;flex-direction:column;gap:10px;padding-top:14px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Joueur 2</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.fire }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.15 52)">Feu</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.water }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.11 228)">Eau</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.plant }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.82 0.14 145)">Plante</span></div>
+</div></div>
+</div>
+<button onClick="{{ goSettingsFromSetup }}" style="align-self:flex-start;font:500 14px/1 'Alegreya Sans',sans-serif;color:#d8b878;background:none;border:none;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:4px">Modifier les touches</button>
+</sc-if>
+<sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font:400 15px/1.45 'Alegreya Sans',sans-serif;color:#cfc6b4;text-wrap:pretty;padding-top:14px;border-top:1px solid rgba(233,227,214,.08)">Sur un seul téléphone, vous jouez tour par tour : chacun dispose de 5 secondes, puis un voile masque l’écran pendant que vous passez l’appareil. Pour un duel simultané, préférez le mode en ligne.</p>
+</sc-if>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+<button onClick="{{ goHome }}" style="font:600 14px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:14px 20px;border-radius:3px;cursor:pointer;min-height:46px">Retour</button>
+<button onClick="{{ startLocal }}" style="display:flex;align-items:center;gap:12px;font:600 15px/1 'Cinzel',serif;letter-spacing:.12em;color:#0b0d0e;background:#d8b878;border:none;padding:14px 22px;border-radius:3px;cursor:pointer;min-height:46px" style-hover="background:#e6c98c">Commencer<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><span style="font:600 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.12em;opacity:.7">· Espace</span></sc-if></button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ inArena }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;top:28px;left:34px;display:flex;flex-direction:column;gap:8px;text-shadow:0 2px 16px rgba(0,0,0,.95)">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#b9ae98">{{ p0.name }}</div>
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 64px/.9 'Cinzel',serif">{{ p0.score }}</span><span style="font:700 28px/1 'Cinzel',serif;color:{{ p0.dc }};opacity:{{ p0.dop }};transform:translateY({{ p0.dy }});transition:opacity .35s,transform .35s">{{ p0.delta }}</span></div>
+<div style="display:flex;align-items:center;gap:8px;font:500 15px/1 'Alegreya Sans',sans-serif;color:{{ p0.sc }};min-height:16px"><span style="width:7px;height:7px;transform:rotate(45deg);background:currentColor;opacity:{{ p0.dot }}"></span>{{ p0.st }}</div>
+</div>
+<div style="position:absolute;top:28px;right:34px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-shadow:0 2px 16px rgba(0,0,0,.95)">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#b9ae98">{{ p1.name }}</div>
+<div style="display:flex;flex-direction:row-reverse;align-items:baseline;gap:14px"><span style="font:600 64px/.9 'Cinzel',serif">{{ p1.score }}</span><span style="font:700 28px/1 'Cinzel',serif;color:{{ p1.dc }};opacity:{{ p1.dop }};transform:translateY({{ p1.dy }});transition:opacity .35s,transform .35s">{{ p1.delta }}</span></div>
+<div style="display:flex;flex-direction:row-reverse;align-items:center;gap:8px;font:500 15px/1 'Alegreya Sans',sans-serif;color:{{ p1.sc }};min-height:16px"><span style="width:7px;height:7px;transform:rotate(45deg);background:currentColor;opacity:{{ p1.dot }}"></span>{{ p1.st }}</div>
+</div>
+<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;text-shadow:0 2px 14px #000">
+<div style="position:relative;width:78px;height:78px;opacity:{{ timerOp }};transition:opacity .3s">
+<svg width="78" height="78" viewBox="0 0 78 78" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="39" cy="39" r="34" fill="none" stroke="rgba(233,227,214,.14)" stroke-width="2"></circle><circle cx="39" cy="39" r="34" fill="none" stroke="#d8b878" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="{{ ringOff }}"></circle></svg>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 32px/1 'Cinzel',serif;color:{{ timerColor }}">{{ timerNum }}</div>
+</div>
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#b9ae98;white-space:nowrap">{{ roundInfo }}</div>
+</div>
+<sc-for list="{{ trinLabels }}" as="tl" hint-placeholder-count="0">
+<div style="position:absolute;left:{{ tl.x }};top:{{ tl.y }};transform:translateX(-50%);opacity:{{ trinOp }};transition:opacity .4s;font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#cfc6b4;text-shadow:0 1px 8px #000;pointer-events:none">{{ tl.name }}</div>
+</sc-for>
+<sc-if value="{{ showLegends }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:34px;bottom:28px;display:flex;flex-direction:column;gap:10px;text-shadow:0 1px 10px #000">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#a79f8f">{{ p0.name }}</div>
+<div style="display:flex;gap:16px">
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.fire }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.15 52)">Feu</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.water }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.11 228)">Eau</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg0.plant }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.82 0.14 145)">Plante</span></div>
+</div>
+</div>
+<sc-if value="{{ isLocal }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;right:34px;bottom:28px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;text-shadow:0 1px 10px #000">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#a79f8f">{{ p1.name }}</div>
+<div style="display:flex;gap:16px">
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.fire }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.15 52)">Feu</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.water }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.8 0.11 228)">Eau</span></div>
+<div style="display:flex;align-items:center;gap:7px"><span style="min-width:28px;height:28px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(233,227,214,.35);border-bottom-width:2px;border-radius:4px;background:rgba(5,8,11,.5);font:600 13px/1 'Alegreya Sans',sans-serif">{{ leg1.plant }}</span><span style="font:500 14px/1 'Alegreya Sans',sans-serif;color:oklch(0.82 0.14 145)">Plante</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isOnline }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:34px;bottom:28px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;text-shadow:0 1px 10px #000">
+<div style="display:flex;align-items:center;gap:8px;font:500 13px/1 'Alegreya Sans',sans-serif;color:#cfc6b4"><span style="width:7px;height:7px;border-radius:50%;background:oklch(0.8 0.14 145)"></span>En ligne · 38 ms</div>
+<button onClick="{{ simLoss }}" style="font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#a79f8f;background:rgba(5,8,11,.5);border:1px dashed rgba(233,227,214,.25);padding:8px 10px;border-radius:3px;cursor:pointer">Prototype · simuler une coupure</button>
+</div>
+</sc-if>
+<button onClick="{{ quit }}" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#a79f8f;background:none;border:none;padding:10px;cursor:pointer" style-hover="color:#d8b878">Échap · Quitter</button>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:0;left:0;right:0;padding:18px 16px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px;text-shadow:0 2px 14px rgba(0,0,0,.95)">
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<div style="font:500 10px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#b9ae98">{{ p0.name }}</div>
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 40px/.9 'Cinzel',serif">{{ p0.score }}</span><span style="font:700 20px/1 'Cinzel',serif;color:{{ p0.dc }};opacity:{{ p0.dop }};transition:opacity .35s">{{ p0.delta }}</span></div>
+<div style="font:500 13px/1.2 'Alegreya Sans',sans-serif;color:{{ p0.sc }}">{{ p0.st }}</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+<div style="position:relative;width:58px;height:58px;opacity:{{ timerOp }};transition:opacity .3s">
+<svg width="58" height="58" viewBox="0 0 78 78" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="39" cy="39" r="34" fill="none" stroke="rgba(233,227,214,.14)" stroke-width="2.5"></circle><circle cx="39" cy="39" r="34" fill="none" stroke="#d8b878" stroke-width="3" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="{{ ringOff }}"></circle></svg>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 24px/1 'Cinzel',serif;color:{{ timerColor }}">{{ timerNum }}</div>
+</div>
+<div style="font:500 10px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#b9ae98;white-space:nowrap">{{ roundInfoShort }}</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0">
+<div style="font:500 10px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#b9ae98">{{ p1.name }}</div>
+<div style="display:flex;flex-direction:row-reverse;align-items:baseline;gap:8px"><span style="font:600 40px/.9 'Cinzel',serif">{{ p1.score }}</span><span style="font:700 20px/1 'Cinzel',serif;color:{{ p1.dc }};opacity:{{ p1.dop }};transition:opacity .35s">{{ p1.delta }}</span></div>
+<div style="font:500 13px/1.2 'Alegreya Sans',sans-serif;color:{{ p1.sc }};text-align:right">{{ p1.st }}</div>
+</div>
+</div>
+<sc-if value="{{ showMobHint }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;bottom:calc(19cqh + 12px);text-align:center;font:500 13px/1 'Alegreya Sans',sans-serif;color:#cfc6b4;text-shadow:0 1px 10px #000;pointer-events:none">{{ mobHint }}</div>
+</sc-if>
+<sc-if value="{{ showMobQuit }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:10px">
+<button onClick="{{ quit }}" style="font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#a79f8f;background:none;border:none;padding:12px;cursor:pointer;min-height:44px">Quitter</button>
+<sc-if value="{{ isOnline }}" hint-placeholder-val="{{ false }}"><button onClick="{{ simLoss }}" style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a79f8f;background:none;border:1px dashed rgba(233,227,214,.25);padding:8px 10px;border-radius:3px;cursor:pointer;min-height:44px">Simuler une coupure</button></sc-if>
+</div>
+</sc-if>
+</sc-if>
+
+<div style="position:absolute;left:50%;top:{{ bannerTop }};transform:translate(-50%,{{ bannerY }});opacity:{{ bannerOp }};transition:opacity .45s,transform .45s;text-align:center;display:flex;flex-direction:column;gap:10px;width:min(720px,92%);pointer-events:none;text-shadow:0 2px 24px #000,0 0 60px rgba(0,0,0,.8)">
+<div style="font:600 clamp(26px,3.6cqw,48px)/1.05 'Cinzel',serif;letter-spacing:.06em;text-wrap:balance">{{ bTitle }}</div>
+<div style="font:500 clamp(15px,1.6cqw,19px)/1.35 'Alegreya Sans',sans-serif;color:#ddd4c2;text-wrap:pretty">{{ bSub }}</div>
+</div>
+
+<sc-for list="{{ trinTaps }}" as="tt" hint-placeholder-count="0">
+<button onClick="{{ tt.onClick }}" aria-label="{{ tt.name }}" style="position:absolute;left:{{ tt.l }};top:{{ tt.t }};width:{{ tt.d }};height:{{ tt.d }};border-radius:50%;border:1px solid rgba(233,227,214,.2);background:rgba(255,255,255,.02);cursor:pointer;padding:0;opacity:{{ tt.op }};transition:opacity .3s,border-color .2s" style-hover="border-color:rgba(216,184,120,.7)"><span style="position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:6px;font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#e9e3d6;text-shadow:0 1px 8px #000;white-space:nowrap">{{ tt.name }}</span></button>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{ isGate }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:#05070a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center">
+<div style="width:14px;height:14px;transform:rotate(45deg);border:1px solid #d8b878"></div>
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">{{ gateLabel }}</div>
+<div style="font:600 28px/1.15 'Cinzel',serif;letter-spacing:.04em;text-wrap:balance">{{ gateTitle }}</div>
+<div style="font:400 16px/1.45 'Alegreya Sans',sans-serif;color:#cfc6b4;max-width:30ch;text-wrap:pretty">{{ gateSub }}</div>
+<button onClick="{{ gateGo }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.12em;color:#0b0d0e;background:#d8b878;border:none;padding:16px 26px;border-radius:3px;cursor:pointer;min-height:48px;margin-top:6px">{{ gateBtn }}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLost }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(3,5,7,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px">
+<div style="width:min(420px,100%);padding:28px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;background:rgba(8,11,13,.88);border:1px solid rgba(224,144,124,.3);border-radius:6px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#e0907c">Connexion interrompue</div>
+<div style="font:600 24px/1.2 'Cinzel',serif">{{ lostTitle }}</div>
+<div style="font:400 15px/1.45 'Alegreya Sans',sans-serif;color:#cfc6b4;text-wrap:pretty">{{ lostSub }}</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px">
+<button onClick="{{ retry }}" style="font:600 14px/1 'Cinzel',serif;letter-spacing:.12em;color:#0b0d0e;background:#d8b878;border:none;padding:14px 20px;border-radius:3px;cursor:pointer;min-height:46px">Réessayer</button>
+<button onClick="{{ quit }}" style="font:600 14px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:14px 20px;border-radius:3px;cursor:pointer;min-height:46px">Quitter la partie</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEnd }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:clamp(28px,8cqh,80px) 20px clamp(24px,6cqh,56px);background:linear-gradient(180deg,rgba(3,5,7,.6),rgba(3,5,7,0) 45%,rgba(3,5,7,0) 70%,rgba(3,5,7,.72))">
+<div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;text-shadow:0 2px 24px #000">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.28em;text-transform:uppercase;color:#b9ae98">Fin de partie</div>
+<div style="font:700 clamp(44px,7.5cqw,104px)/1 'Cinzel',serif;letter-spacing:.08em;color:#f0d58c">{{ endTitle }}</div>
+<div style="font:500 clamp(16px,1.8cqw,21px)/1.3 'Alegreya Sans',sans-serif;color:#ddd4c2">{{ endSub }}</div>
+<div style="display:flex;align-items:center;gap:26px;margin-top:10px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#a79f8f">{{ p0.name }}</span><span style="font:600 48px/1 'Cinzel',serif">{{ p0.score }}</span></div>
+<span style="width:24px;height:1px;background:rgba(233,227,214,.4)"></span>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#a79f8f">{{ p1.name }}</span><span style="font:600 48px/1 'Cinzel',serif">{{ p1.score }}</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+<button onClick="{{ replay }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.12em;color:#0b0d0e;background:#d8b878;border:none;padding:16px 26px;border-radius:3px;cursor:pointer;min-height:48px" style-hover="background:#e6c98c">Rejouer</button>
+<button onClick="{{ goHome }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:rgba(5,8,11,.4);border:1px solid rgba(233,227,214,.3);padding:16px 24px;border-radius:3px;cursor:pointer;min-height:48px">Retour à l’accueil</button>
+</div>
+<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}"><div style="font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#a79f8f">Espace · Rejouer   ·   Échap · Accueil</div></sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;justify-content:flex-end;background:rgba(3,5,7,.4)">
+<div style="width:min(500px,100%);height:100%;overflow-y:auto;background:rgba(8,11,13,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-left:1px solid rgba(216,184,120,.18);padding:30px 28px 40px;display:flex;flex-direction:column;gap:30px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">ELEM3NTS</div><div style="font:600 28px/1 'Cinzel',serif;letter-spacing:.06em">Réglages</div></div>
+<button onClick="{{ closeSettings }}" style="font:600 13px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:12px 16px;border-radius:3px;cursor:pointer;min-height:44px">Fermer</button>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Commandes · clavier partagé</div>
+<p style="margin:0;font:400 14px/1.45 'Alegreya Sans',sans-serif;color:#b9ae98;text-wrap:pretty">Sélectionnez une action, puis appuyez sur la nouvelle touche. Échap annule.</p>
+<div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:10px 12px;align-items:center">
+<span></span>
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#a79f8f;text-align:center">Joueur 1</div>
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#a79f8f;text-align:center">Joueur 2</div>
+<span style="font:600 15px/1 'Cinzel',serif;color:oklch(0.8 0.15 52);padding-right:6px">Feu</span>
+<button onClick="{{ K.p0.fire.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p0.fire.bd }};border-bottom-width:2px;background:{{ K.p0.fire.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p0.fire.label }}</button>
+<button onClick="{{ K.p1.fire.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p1.fire.bd }};border-bottom-width:2px;background:{{ K.p1.fire.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p1.fire.label }}</button>
+<span style="font:600 15px/1 'Cinzel',serif;color:oklch(0.8 0.11 228);padding-right:6px">Eau</span>
+<button onClick="{{ K.p0.water.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p0.water.bd }};border-bottom-width:2px;background:{{ K.p0.water.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p0.water.label }}</button>
+<button onClick="{{ K.p1.water.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p1.water.bd }};border-bottom-width:2px;background:{{ K.p1.water.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p1.water.label }}</button>
+<span style="font:600 15px/1 'Cinzel',serif;color:oklch(0.82 0.14 145);padding-right:6px">Plante</span>
+<button onClick="{{ K.p0.plant.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p0.plant.bd }};border-bottom-width:2px;background:{{ K.p0.plant.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p0.plant.label }}</button>
+<button onClick="{{ K.p1.plant.onClick }}" style="height:46px;border-radius:4px;border:1px solid {{ K.p1.plant.bd }};border-bottom-width:2px;background:{{ K.p1.plant.bg }};color:#efe8da;font:600 16px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ K.p1.plant.label }}</button>
+</div>
+<div style="min-height:40px;font:500 14px/1.4 'Alegreya Sans',sans-serif;color:{{ keyMsgColor }};text-wrap:pretty">{{ keyMsg }}</div>
+<button onClick="{{ resetKeys }}" style="align-self:flex-start;font:500 14px/1 'Alegreya Sans',sans-serif;color:#d8b878;background:none;border:none;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:4px">Rétablir les touches par défaut</button>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px;padding-top:24px;border-top:1px solid rgba(233,227,214,.08)">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Partie</div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 16px/1.2 'Alegreya Sans',sans-serif">Match nul</span><span style="font:400 14px/1.45 'Alegreya Sans',sans-serif;color:#b9ae98;text-wrap:pretty">Si les deux joueurs atteignent la cible ensemble (Feu + Feu), la partie se termine sur un match nul. Désactivé : mort subite. N’affecte pas les éléments identiques, qui appliquent toujours leurs règles.</span></div>
+<button onClick="{{ toggleDraw }}" aria-label="Match nul" style="width:48px;height:28px;border-radius:14px;border:1px solid rgba(233,227,214,.25);background:{{ drawBg }};position:relative;cursor:pointer;flex:none;transition:background .2s"><span style="position:absolute;top:4px;left:{{ drawKnob }};width:18px;height:18px;border-radius:50%;background:#efe8da;transition:left .2s"></span></button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding-top:24px;border-top:1px solid rgba(233,227,214,.08)">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Affichage</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font:600 16px/1.2 'Alegreya Sans',sans-serif">Qualité visuelle</span>
+<div style="display:flex;gap:4px;padding:4px;border:1px solid rgba(233,227,214,.15);border-radius:4px">
+<sc-for list="{{ qOpts }}" as="qo" hint-placeholder-count="3">
+<button onClick="{{ qo.onClick }}" style="flex:1;height:40px;border:none;border-radius:3px;background:{{ qo.bg }};color:{{ qo.fg }};font:600 14px/1 'Alegreya Sans',sans-serif;cursor:pointer">{{ qo.label }}</button>
+</sc-for>
+</div>
+<span style="font:400 13px/1.4 'Alegreya Sans',sans-serif;color:#a79f8f">{{ qDesc }}</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 16px/1.2 'Alegreya Sans',sans-serif">Mouvements réduits</span><span style="font:400 14px/1.45 'Alegreya Sans',sans-serif;color:#b9ae98;text-wrap:pretty">Moins de particules, animations ralenties, pas de tremblement ni de parallaxe. Les éléments et les résultats restent reconnaissables.</span></div>
+<button onClick="{{ toggleReduced }}" aria-label="Mouvements réduits" style="width:48px;height:28px;border-radius:14px;border:1px solid rgba(233,227,214,.25);background:{{ redBg }};position:relative;cursor:pointer;flex:none;transition:background .2s"><span style="position:absolute;top:4px;left:{{ redKnob }};width:18px;height:18px;border-radius:50%;background:#efe8da;transition:left .2s"></span></button>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,5,7,.5)">
+<div style="width:min(660px,100%);max-height:100%;overflow-y:auto;padding:32px 30px;display:flex;flex-direction:column;gap:26px;background:rgba(8,11,13,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(216,184,120,.2);border-radius:6px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font:600 28px/1 'Cinzel',serif;letter-spacing:.06em">Règles du jeu</div><button onClick="{{ goHome }}" style="font:600 13px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:12px 16px;border-radius:3px;cursor:pointer;min-height:44px">Fermer</button></div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Le cycle</div>
+<div style="display:flex;flex-direction:column;gap:8px;font:500 19px/1.35 'Alegreya Sans',sans-serif">
+<div><b style="color:oklch(0.8 0.11 228)">L’Eau</b> éteint <b style="color:oklch(0.8 0.15 52)">le Feu</b></div>
+<div><b style="color:oklch(0.8 0.15 52)">Le Feu</b> consume <b style="color:oklch(0.82 0.14 145)">la Plante</b></div>
+<div><b style="color:oklch(0.82 0.14 145)">La Plante</b> absorbe <b style="color:oklch(0.8 0.11 228)">l’Eau</b></div>
+</div>
+<p style="margin:0;font:400 16px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4">Le vainqueur de la manche marque 1 point, l’autre ne marque rien.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Éléments identiques · jamais une simple égalité</div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:10px 18px;font:400 16px/1.45 'Alegreya Sans',sans-serif;color:#cfc6b4">
+<b style="font-weight:700;color:oklch(0.8 0.15 52)">Feu + Feu</b><span>Les deux joueurs gagnent 1 point.</span>
+<b style="font-weight:700;color:oklch(0.8 0.11 228)">Eau + Eau</b><span>Les deux joueurs perdent 1 point.</span>
+<b style="font-weight:700;color:oklch(0.82 0.14 145)">Plante + Plante</b><span>Le joueur au score le plus faible gagne 1 point. À égalité, rien ne change.</span>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Le temps · la victoire</div>
+<p style="margin:0;font:400 16px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4;text-wrap:pretty">Chaque manche laisse 5 secondes pour choisir. Les choix restent secrets jusqu’à zéro. Si un seul joueur a choisi, il marque 1 point. Le premier à atteindre le score cible (1 à 10) remporte la partie.</p>
+</div>
+<button onClick="{{ goNotes }}" style="align-self:flex-start;font:500 14px/1 'Alegreya Sans',sans-serif;color:#d8b878;background:none;border:none;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:4px">Hypothèses du prototype (score minimum, égalités…)</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOnlineScreen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,5,7,.45)">
+<div style="width:min(460px,100%);max-height:100%;overflow-y:auto;padding:30px 28px;display:flex;flex-direction:column;gap:22px;background:rgba(8,11,13,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(216,184,120,.2);border-radius:6px">
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Jouer en ligne</div><div style="font:600 26px/1.1 'Cinzel',serif;letter-spacing:.05em">{{ onTitle }}</div></div>
+
+<sc-if value="{{ onMenu }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<button onClick="{{ onHost }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px 18px;background:rgba(255,255,255,.02);border:1px solid rgba(233,227,214,.18);border-radius:4px;color:#efe8da;cursor:pointer;min-height:64px" style-hover="border-color:#d8b878"><span style="font:600 17px/1 'Cinzel',serif;letter-spacing:.08em">Créer une partie</span><span style="font:400 14px/1.3 'Alegreya Sans',sans-serif;color:#b9ae98">Obtenez un code à partager avec votre adversaire</span></button>
+<button onClick="{{ onJoin }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px 18px;background:rgba(255,255,255,.02);border:1px solid rgba(233,227,214,.18);border-radius:4px;color:#efe8da;cursor:pointer;min-height:64px" style-hover="border-color:#d8b878"><span style="font:600 17px/1 'Cinzel',serif;letter-spacing:.08em">Rejoindre une partie</span><span style="font:400 14px/1.3 'Alegreya Sans',sans-serif;color:#b9ae98">Saisissez le code reçu</span></button>
+</div>
+</sc-if>
+
+<sc-if value="{{ onHosting }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px;border:1px solid rgba(216,184,120,.3);border-radius:4px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Code de la partie</div>
+<div style="font:700 38px/1 'Cinzel',serif;letter-spacing:.2em;color:#f0d58c;padding-left:.2em">{{ code }}</div>
+<button onClick="{{ copyLink }}" style="font:500 14px/1 'Alegreya Sans',sans-serif;color:#d8b878;background:none;border:none;padding:8px;cursor:pointer;text-decoration:underline;text-underline-offset:4px">{{ copyLabel }}</button>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span style="font:500 15px/1.3 'Alegreya Sans',sans-serif;color:#cfc6b4">{{ targetLine }}</span>
+<div style="display:flex;align-items:center;gap:10px"><button onClick="{{ decTarget }}" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(233,227,214,.3);background:transparent;color:#efe8da;font:500 20px/1 'Cinzel',serif;cursor:pointer">−</button><span style="font:600 30px/1 'Cinzel',serif;min-width:1.2em;text-align:center">{{ target }}</span><button onClick="{{ incTarget }}" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(233,227,214,.3);background:transparent;color:#efe8da;font:500 20px/1 'Cinzel',serif;cursor:pointer">+</button></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;font:500 15px/1 'Alegreya Sans',sans-serif;color:#cfc6b4"><span style="width:8px;height:8px;transform:rotate(45deg);background:#d8b878;opacity:{{ pulse }};transition:opacity 1.2s"></span>En attente d’un adversaire{{ dotsStr }}</div>
+<button onClick="{{ simArrive }}" style="align-self:flex-start;font:500 12px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#a79f8f;background:none;border:1px dashed rgba(233,227,214,.25);padding:10px 12px;border-radius:3px;cursor:pointer;min-height:44px">Prototype · simuler l’arrivée d’un adversaire</button>
+</sc-if>
+
+<sc-if value="{{ onJoining }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<label style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">Code reçu</label>
+<input value="{{ joinCode }}" onChange="{{ onJoinInput }}" placeholder="ex. K7F2QX" maxlength="7" style="height:56px;padding:0 16px;background:rgba(0,0,0,.35);border:1px solid rgba(233,227,214,.25);border-radius:4px;color:#f0d58c;font:700 26px/1 'Cinzel',serif;letter-spacing:.2em;text-transform:uppercase;outline:none;user-select:text;-webkit-user-select:text"></input>
+<div style="min-height:20px;font:500 14px/1.3 'Alegreya Sans',sans-serif;color:{{ joinMsgColor }}">{{ joinMsg }}</div>
+<button onClick="{{ doJoin }}" style="font:600 15px/1 'Cinzel',serif;letter-spacing:.12em;color:#0b0d0e;background:#d8b878;border:none;padding:16px 22px;border-radius:3px;cursor:pointer;min-height:48px">Rejoindre</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ onFound }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0;text-align:center">
+<div style="font:500 15px/1.4 'Alegreya Sans',sans-serif;color:#cfc6b4">{{ foundSub }}</div>
+<div style="font:600 30px/1 'Cinzel',serif;color:#f0d58c">{{ foundName }}</div>
+</div>
+</sc-if>
+
+<button onClick="{{ onBack }}" style="align-self:flex-start;font:600 13px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:13px 18px;border-radius:3px;cursor:pointer;min-height:44px">{{ onBackLabel }}</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;bottom:{{ demoBottom }};transform:translateX(-50%);width:min(1000px,calc(100% - 20px));display:flex;flex-direction:column;gap:12px;padding:14px 16px;background:rgba(8,11,13,.84);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(216,184,120,.2);border-radius:6px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#d8b878">Démo · rejouer chaque confrontation</div>
+<div style="display:flex;align-items:center;gap:8px"><span style="font:500 13px/1 'Alegreya Sans',sans-serif;color:#a79f8f">Vainqueur</span>
+<div style="display:flex;gap:3px;padding:3px;border:1px solid rgba(233,227,214,.15);border-radius:4px">
+<button onClick="{{ sideL }}" style="height:34px;padding:0 12px;border:none;border-radius:3px;background:{{ sideLbg }};color:{{ sideLfg }};font:600 13px/1 'Alegreya Sans',sans-serif;cursor:pointer">À gauche</button>
+<button onClick="{{ sideR }}" style="height:34px;padding:0 12px;border:none;border-radius:3px;background:{{ sideRbg }};color:{{ sideRfg }};font:600 13px/1 'Alegreya Sans',sans-serif;cursor:pointer">À droite</button>
+</div>
+<button onClick="{{ goHome }}" style="height:40px;padding:0 12px;font:600 12px/1 'Cinzel',serif;letter-spacing:.1em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);border-radius:3px;cursor:pointer">Accueil</button>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ demoList }}" as="dm" hint-placeholder-count="9">
+<button onClick="{{ dm.onClick }}" style="height:40px;padding:0 14px;border:1px solid {{ dm.bd }};border-radius:3px;background:rgba(255,255,255,.02);color:#efe8da;font:500 14px/1 'Alegreya Sans',sans-serif;cursor:pointer;opacity:{{ dm.op }}" style-hover="border-color:#d8b878">{{ dm.label }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isNotes }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(3,5,7,.6)">
+<div style="width:min(920px,100%);max-height:100%;overflow-y:auto;padding:34px 32px;display:flex;flex-direction:column;gap:30px;background:rgba(8,11,13,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(216,184,120,.2);border-radius:6px;user-select:text;-webkit-user-select:text">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="display:flex;flex-direction:column;gap:8px"><div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#a79f8f">ELEM3NTS · prototype v1</div><div style="font:600 28px/1 'Cinzel',serif;letter-spacing:.05em">Notes de conception</div></div><button onClick="{{ goHome }}" style="font:600 13px/1 'Cinzel',serif;letter-spacing:.12em;color:#efe8da;background:transparent;border:1px solid rgba(233,227,214,.3);padding:12px 16px;border-radius:3px;cursor:pointer;min-height:44px">Fermer</button></div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Hypothèses du prototype · à valider</div>
+<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font:400 15px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4">
+<li>Score plancher à 0 : Eau + Eau ne fait jamais descendre sous zéro ; la variation affichée devient « ±0 (minimum 0) ».</li>
+<li>Aucun choix des deux côtés : manche annulée, aucun point.</li>
+<li>Feu + Feu amenant les deux joueurs à la cible : match nul si l’option « Match nul » est active ; sinon mort subite — la partie continue jusqu’à ce qu’un joueur mène en ayant atteint la cible.</li>
+<li>Plante + Plante : scores comparés avant la manche ; le plus faible reçoit le gain normal de +1. Égalité : rien ne change.</li>
+<li>Le compte à rebours va toujours jusqu’à zéro, même si les deux choix sont verrouillés. Un choix verrouillé est définitif.</li>
+<li>Mobile, un seul téléphone : tour par tour, 5 s chacun, voile opaque entre les deux ; le choix du second joueur déclenche la révélation. Limite : ce n’est plus simultané, et rien n’empêche physiquement de regarder.</li>
+<li>En ligne : adversaire simulé (« Sylve »). Une coupure annule la manche en cours ; la reprise relance une nouvelle manche.</li>
+</ul>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Réellement dans le prototype</div>
+<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font:400 15px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4">
+<li>Rendu Three.js temps réel : arène de pierre gravée, monolithes à runes, forêt, brume, lune, ombres (qualité haute).</li>
+<li>Feu en particules additives + braises + lumière vacillante.</li>
+<li>Eau : sphère déformée en continu, matériau réfractif, gouttelettes en orbite, ondes.</li>
+<li>Plante : arbres procéduraux qui ondulent, spores lumineuses.</li>
+<li>9 confrontations : vague + vapeur, embrasement de la forêt, irrigation + racines + croissance, embrasement double, siphon, croissance de la plus faible, équilibre, temps écoulé, manche annulée.</li>
+<li>Cycle complet, touches reconfigurables, qualité et mouvements réduits.</li>
+</ul>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Prévu pour la production</div>
+<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font:400 15px/1.5 'Alegreya Sans',sans-serif;color:#a79f8f">
+<li>Post-traitement : bloom, étalonnage, profondeur de champ à l’impact.</li>
+<li>Feu volumétrique (shader de bruit) et fumée texturée.</li>
+<li>Eau : shader de surface avec caustiques, vague simulée, écume texturée.</li>
+<li>Végétation instanciée, vent sur GPU, feuilles modélisées, carbonisation progressive.</li>
+<li>Caméra dédiée par confrontation, son et musique.</li>
+<li>Réseau réel (WebSocket, arbitrage serveur des choix et du temps), reconnexion.</li>
+</ul>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="font:500 11px/1 'Alegreya Sans SC',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d8b878">Direction visuelle</div>
+<div style="display:flex;flex-wrap:wrap;gap:14px">
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:#07090b;border:1px solid rgba(233,227,214,.15)"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Nuit</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">#07090B</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:#4d4f4e"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Pierre</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">#4D4F4E</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:#e9e3d6"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Parchemin</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">#E9E3D6</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:#d8b878"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Or runique</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">#D8B878</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:oklch(0.78 0.16 52)"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Feu</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">oklch .78 .16 52</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:oklch(0.78 0.12 228)"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Eau</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">oklch .78 .12 228</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;width:92px"><div style="height:44px;border-radius:3px;background:oklch(0.8 0.15 145)"></div><span style="font:500 13px/1.2 'Alegreya Sans',sans-serif">Plante</span><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#a79f8f">oklch .80 .15 145</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;font:400 15px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4">
+<div><b style="font:600 18px/1.3 'Cinzel',serif;color:#efe8da">Cinzel</b> — titres, scores, chiffres : capitales gravées, lisibles de loin.<br><b style="color:#efe8da">Alegreya Sans</b> — texte et interface, petites capitales espacées pour les libellés.</div>
+<div><b style="color:#efe8da">Matières</b> : pierre usée gravée de runes dorées, eau translucide et réfractive, écorce sombre, feuilles luminescentes. <b style="color:#efe8da">Lumière</b> : lune froide et brume, chaque élément éclaire l’arène de sa couleur.</div>
+<div><b style="color:#efe8da">Mouvement</b> : repos perpétuel, puis anticipation → impact → retour. <b style="color:#efe8da">Interface</b> : texte posé sur la scène, aucun panneau pendant le jeu ; le verrouillage est une colonne de lumière neutre, identique pour les trois éléments.</div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ glFail }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#05080b;font:500 16px/1.5 'Alegreya Sans',sans-serif;color:#cfc6b4">WebGL est indisponible sur cet appareil : la scène 3D ne peut pas être affichée.</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;mobile&quot;,&quot;desktop&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'mobile'|'desktop'&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;setup&quot;,&quot;arena&quot;,&quot;end&quot;,&quot;settings&quot;,&quot;rules&quot;,&quot;online&quot;,&quot;demo&quot;,&quot;notes&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+const ELS=['fire','water','plant'];
+const EL={fire:{n:'Feu',c:'oklch(0.8 0.15 52)'},water:{n:'Eau',c:'oklch(0.8 0.11 228)'},plant:{n:'Plante',c:'oklch(0.82 0.14 145)'}};
+const DEFKEYS=()=>[{fire:'q',water:'s',plant:'d'},{fire:'j',water:'k',plant:'l'}];
+const KL={' ':'Espace',arrowleft:'←',arrowright:'→',arrowup:'↑',arrowdown:'↓',enter:'Entrée',shift:'Maj',control:'Ctrl',alt:'Alt',tab:'Tab',backspace:'Retour'};
+const kl=k=>KL[k]||(k&&k.length===1?k.toUpperCase():k);
+const GOLD='#d8b878',MUTED='#a79f8f',SKEY='elem3nts.settings.v1';
+const pick=()=>ELS[(Math.random()*3)|0];
+
+class Component extends DCLogic {
+  canvasRef=React.createRef(); appRef=React.createRef(); timers=[]; choices=[null,null];
+  state={screen:'home',mode:'local',target:5,drawOpt:true,quality:'high',reduced:false,keys:DEFKEYS(),listen:null,keyMsg:'',keyErr:false,
+    scores:[0,0],round:0,phase:'idle',timeLeft:5,locks:[false,false],revealed:[null,null],deltas:[null,null],banner:null,selP:0,gateP:0,winner:null,sudden:false,
+    online:'menu',code:'K7F·2QX',joinCode:'',joinMsg:'',copied:false,lost:null,tick:0,demoSide:0,trin:[],cw:1200,ready:false,glFail:false,returnTo:'home'};
+
+  componentDidMount(){
+    try{const s=JSON.parse(localStorage.getItem(SKEY)||'null');if(s)this.setState({keys:s.keys||DEFKEYS(),drawOpt:s.drawOpt??true,quality:s.quality||'high',reduced:!!s.reduced})}catch(e){}
+    this._key=e=>this.onKey(e);window.addEventListener('keydown',this._key);
+    this._ro=new ResizeObserver(()=>{const el=this.appRef.current;if(el)this.setState({cw:el.clientWidth})});if(this.appRef.current)this._ro.observe(this.appRef.current);
+    this._pulse=setInterval(()=>this.setState(s=>({tick:s.tick+1})),900);
+    this._onEng=()=>this.initEngine();window.addEventListener('elem3nts-engine',this._onEng);this.initEngine();
+  }
+  componentWillUnmount(){window.removeEventListener('keydown',this._key);window.removeEventListener('elem3nts-engine',this._onEng);this._ro&&this._ro.disconnect();clearInterval(this._pulse);this.clearTimers();this.eng&&this.eng.destroy()}
+  componentDidUpdate(pp){if(this.eng){const m=this.mob();if(m!==this._lastMob){this._lastMob=m;this.eng.setMobile(m)}}if(pp.startScreen!==this.props.startScreen&&this.eng)this.applyStart()}
+  initEngine(){if(this.eng)return;const E=window.Elem3ntsEngine;if(!E||!this.canvasRef.current){clearTimeout(this._w);this._w=setTimeout(()=>this.initEngine(),120);return}
+    try{this.eng=new E(this.canvasRef.current)}catch(err){console.error(err);this.setState({glFail:true,ready:true});return}
+    const g=this.eng;g.onTrinity=tr=>this.setState({trin:tr});g.setQuality(this.state.quality);g.setReduced(this.state.reduced);this._lastMob=this.mob();g.setMobile(this._lastMob);this.setState({ready:true,trin:g.getTrinity()});this.applyStart()}
+  applyStart(){const s=this.props.startScreen||'home';if(s==='arena')this.startMatch('local');else if(s==='end'){this.setState({mode:'local',scores:[5,3],target:5});this.finish(0)}else if(s==='demo')this.go('demo');else if(s==='online')this.go('online');else this.go(s)}
+
+  mob(){const d=this.props.device||'auto';return d==='mobile'||(d!=='desktop'&&this.state.cw<720)}
+  hotseat(){return this.state.mode==='local'&&this.mob()}
+  names(){return this.state.mode==='online'?['Vous','Sylve']:['Joueur 1','Joueur 2']}
+  save(p){const s={...this.state,...p};try{localStorage.setItem(SKEY,JSON.stringify({keys:s.keys,drawOpt:s.drawOpt,quality:s.quality,reduced:s.reduced}))}catch(e){}}
+  after(ms,fn){const id=setTimeout(()=>{this.timers=this.timers.filter(x=>x!==id);fn()},ms);this.timers.push(id);return id}
+  clearTimers(){this.timers.forEach(clearTimeout);this.timers=[];clearInterval(this._tick)}
+
+  go(sc,extra){const arena=['arena','demo','end','setup'].includes(sc);if(!['settings'].includes(sc)||this.state.screen!=='setup'){}
+    if(['home','setup','rules','online','notes','demo'].includes(sc)){this.clearTimers();this.eng&&this.eng.reset()}
+    this.setState({screen:sc,phase:'idle',banner:null,deltas:[null,null],revealed:[null,null],locks:[false,false],lost:null,listen:null,keyMsg:'',...(extra||{})});
+    if(sc==='demo')this.setState({scores:[0,0],mode:'local'});if(sc==='online')this.setState({online:'menu',joinMsg:'',joinCode:''});
+    this.eng&&this.eng.setScene(arena?'arena':'home')}
+  quit(){this.clearTimers();this.eng&&this.eng.reset();this.go('home',{mode:'local'})}
+
+  onKey(e){const k=(e.key||'').toLowerCase(),st=this.state;
+    if(st.listen){e.preventDefault();if(k==='escape'){this.setState({listen:null,keyMsg:'Modification annulée.',keyErr:false});return}this.assignKey(k);return}
+    if(e.target&&e.target.tagName==='INPUT')return;
+    if(k===' '){if(['home','setup','end'].includes(st.screen))e.preventDefault();if(st.screen==='home')return this.go('setup',{mode:'local'});if(st.screen==='setup')return this.startMatch('local');if(st.screen==='end')return this.replay()}
+    if(k==='escape'){if(['arena','end','demo'].includes(st.screen))return this.quit();if(st.screen==='settings')return this.closeSettings();if(st.screen!=='home')return this.go('home')}
+    if(st.screen==='arena'&&st.phase==='select'&&!this.hotseat()){for(let i=0;i<2;i++){if(st.mode==='online'&&i===1)continue;for(const el of ELS)if(st.keys[i][el]===k){e.preventDefault();this.choose(i,el);return}}}}
+  assignKey(k){const {listen,keys}=this.state,N=['Joueur 1','Joueur 2'];if(!listen)return;
+    if(k===' '||k==='enter'){this.setState({keyMsg:`« ${kl(k)} » est réservée au menu. Choisissez une autre touche.`,keyErr:true});return}
+    for(let p=0;p<2;p++)for(const el of ELS){if((p!==listen.p||el!==listen.el)&&keys[p][el]===k){this.setState({keyMsg:`Conflit : « ${kl(k)} » est déjà attribuée à ${N[p]} · ${EL[el].n}. Choisissez une autre touche.`,keyErr:true});return}}
+    const nk=keys.map(o=>({...o}));nk[listen.p][listen.el]=k;this.setState({keys:nk,listen:null,keyMsg:`« ${kl(k)} » attribuée à ${N[listen.p]} · ${EL[listen.el].n}.`,keyErr:false});this.save({keys:nk})}
+  closeSettings(){const r=this.state.returnTo||'home';this.setState({listen:null});this.go(r)}
+
+  startMatch(mode){this.clearTimers();this.eng&&this.eng.reset();this.choices=[null,null];const T=this.state.target;
+    this.setState({screen:'arena',mode,scores:[0,0],round:0,phase:'idle',sudden:false,winner:null,deltas:[null,null],revealed:[null,null],locks:[false,false],lost:null,banner:{title:'Que le duel commence',sub:`Premier à ${T} point${T>1?'s':''}`}});
+    this.eng&&this.eng.setScene('arena');this.after(1800,()=>{this.setState({banner:null});this.after(400,()=>this.startRound())})}
+  replay(){this.startMatch(this.state.mode)}
+  startRound(){if(this.state.lost)return;this.choices=[null,null];if(this.eng){this.eng.setLock(0,false);this.eng.setLock(1,false)}const hot=this.hotseat();
+    this.setState(s=>({round:s.round+1,locks:[false,false],revealed:[null,null],deltas:[null,null],banner:null,timeLeft:5,phase:hot?'gate':'select',gateP:0,selP:0}));if(!hot)this.beginSelect(null)}
+  beginSelect(p){this.setState({phase:'select',selP:p??0,timeLeft:5});this.deadline=performance.now()+5000;clearInterval(this._tick);
+    this._tick=setInterval(()=>{const tl=Math.max(0,(this.deadline-performance.now())/1000);this.setState({timeLeft:tl});if(tl<=0){clearInterval(this._tick);this.endSelect()}},50);
+    if(this.state.mode==='online')this.after(700+Math.random()*3300,()=>this.choose(1,pick()))}
+  endSelect(){if(this.hotseat()&&this.state.selP===0){this.setState({phase:'gate',gateP:1});return}this.doReveal()}
+  choose(i,el){const st=this.state;if(st.phase!=='select'||this.choices[i])return;if(this.hotseat()&&i!==st.selP)return;this.choices[i]=el;const lk=[...st.locks];lk[i]=true;this.setState({locks:lk});this.eng&&this.eng.setLock(i,true);
+    if(this.hotseat()){clearInterval(this._tick);if(i===0)this.setState({phase:'gate',gateP:1});else this.doReveal()}}
+  gateGo(){this.beginSelect(this.state.gateP)}
+  resolve(c,sc){const [a,b]=c,P=this.names();
+    if(!a&&!b)return{kind:'void',w:0,d:[0,0],title:'Temps écoulé',sub:'Aucun choix — la manche est annulée'};
+    if(!a||!b){const w=a?0:1,d=[0,0];d[w]=1;return{kind:'solo',w,d,title:'Temps écoulé',sub:`Seul choix de la manche : point pour ${P[w]}`}}
+    if(a===b){if(a==='fire')return{kind:'flare',w:0,d:[1,1],title:'Feu + Feu',sub:'Les flammes s’embrasent — +1 pour chacun'};
+      if(a==='water')return{kind:'siphon',w:0,d:[-1,-1],title:'Eau + Eau',sub:'Le reflux emporte tout — −1 pour chacun'};
+      if(sc[0]===sc[1])return{kind:'balance',w:0,d:[0,0],title:'Plante + Plante',sub:'Scores égaux — les forêts restent en équilibre'};
+      const w=sc[0]<sc[1]?0:1,d=[0,0];d[w]=1;return{kind:'thrive',w,d,title:'Plante + Plante',sub:`Le plus faible grandit : +1 pour ${P[w]}`}}
+    const beats={water:'fire',fire:'plant',plant:'water'},w=beats[a]===b?0:1,d=[0,0];d[w]=1;
+    const T={water:['wave','L’Eau éteint le Feu'],fire:['burn','Le Feu consume la Plante'],plant:['grow','La Plante absorbe l’Eau']}[c[w]];
+    return{kind:T[0],w,d,title:T[1],sub:`+1 pour ${P[w]}`}}
+  doReveal(){clearInterval(this._tick);const c=[...this.choices],sc=[...this.state.scores],res=this.resolve(c,sc);this.setState({phase:'reveal',revealed:c,locks:[false,false],timeLeft:0});this.eng&&this.eng.reveal(c[0],c[1]);
+    this.after(c[0]||c[1]?1100:500,()=>{this.setState({phase:'clash'});if(!this.eng){this.applyRes(res,sc);this.after(1500,()=>this.afterRound());return}
+      this.eng.clash(res.kind,res.w,()=>this.applyRes(res,sc),()=>{this.setState({phase:'result'});this.after(1600,()=>this.afterRound())})})}
+  applyRes(res,sc){const ns=sc.map((v,i)=>Math.max(0,v+res.d[i]));let floored=false;const del=res.d.map((d,i)=>{if(d>0)return'+1';if(d<0){if(ns[i]===sc[i]){floored=true;return'±0'}return'−1'}return'±0'});
+    this.setState({scores:ns,deltas:del,banner:{title:res.title,sub:res.sub+(floored?' (score minimum : 0)':'')}})}
+  afterRound(){this.eng&&this.eng.reset();this.setState({banner:null,deltas:[null,null],phase:'idle'});if(this.state.screen==='demo')return;
+    const [a,b]=this.state.scores,T=this.state.target;
+    if(Math.max(a,b)>=T){if(a!==b)return this.after(700,()=>this.finish(a>b?0:1));if(this.state.drawOpt)return this.after(700,()=>this.finish(-1));
+      this.setState({sudden:true,banner:{title:'Mort subite',sub:'Les deux joueurs ont atteint la cible — le prochain écart décide'}});return this.after(2200,()=>{this.setState({banner:null});this.after(300,()=>this.startRound())})}
+    this.after(800,()=>this.startRound())}
+  finish(w){this.clearTimers();this.setState({screen:'end',winner:w,phase:'idle',banner:null});this.eng&&(this.eng.setScene('arena'),this.eng.celebrate(w))}
+  simLoss(){this.clearTimers();this.eng&&this.eng.reset();this.setState({lost:'lost',phase:'idle',banner:null,locks:[false,false]})}
+  retry(){this.setState({lost:'retry'});this.after(1500,()=>{this.setState({lost:null});this.startRound()})}
+  runDemo(id){if(this.state.phase!=='idle')return;const w=this.state.demoSide,o=1-w,c=[null,null];let sc=[2,2];
+    const M={wave:['water','fire'],burn:['fire','plant'],grow:['plant','water'],flare:['fire','fire'],siphon:['water','water'],thrive:['plant','plant'],balance:['plant','plant'],solo:['fire',null],void:[null,null]}[id];
+    c[w]=M[0];c[o]=M[1];if(id==='thrive')sc=w===0?[1,3]:[3,1];this.choices=c;this.setState({scores:sc,locks:[!!c[0],!!c[1]]});if(this.eng){this.eng.setLock(0,!!c[0]);this.eng.setLock(1,!!c[1])}
+    this.setState({phase:'reveal'});this.after(700,()=>this.doReveal())}
+
+  renderVals(){const st=this.state,mob=this.mob(),dev=this.props.device||'auto',N=this.names(),frame=dev==='mobile';
+    const inArena=st.screen==='arena'||st.screen==='demo',sel=st.phase==='select',rev=['reveal','clash','result'].includes(st.phase),hot=this.hotseat()&&st.screen==='arena';
+    const status=i=>{if(st.phase==='select'||st.phase==='gate'){if(st.locks[i])return{st:(st.mode==='online'&&i===0&&this.choices[0])?`Choix verrouillé · ${EL[this.choices[0]].n}`:'Choix verrouillé',sc:GOLD,dot:1};
+        if(hot&&(st.phase==='gate'||st.selP!==i))return{st:'En attente',sc:MUTED,dot:0};if(st.mode==='online'&&i===1)return{st:'Réfléchit…',sc:MUTED,dot:0};return{st:'Choix en cours…',sc:MUTED,dot:0}}
+      if(rev){const e=st.revealed[i];return e?{st:EL[e].n,sc:EL[e].c,dot:1}:{st:'Aucun choix',sc:MUTED,dot:0}}
+      if(st.screen==='demo'&&st.locks[i])return{st:'Choix verrouillé',sc:GOLD,dot:1};return{st:'',sc:MUTED,dot:0}};
+    const pl=[0,1].map(i=>{const d=st.deltas[i];return{name:N[i],score:st.scores[i],delta:d||'',dop:d?1:0,dy:d?'0px':'8px',dc:d==='+1'?'#f0d58c':d==='−1'?'#e0907c':MUTED,...status(i)}});
+    const leg=i=>({fire:kl(st.keys[i].fire),water:kl(st.keys[i].water),plant:kl(st.keys[i].plant)});
+    const tl=st.timeLeft,T=st.target;
+    const showTaps=st.screen==='arena'&&sel&&(mob||st.mode==='online')&&!st.lost;const myP=hot?st.selP:0;const tapLocked=!!this.choices[myP];
+    const trinTaps=showTaps?st.trin.map((p,i)=>({l:(p.x-p.r)+'px',t:(p.y-p.r)+'px',d:(p.r*2)+'px',name:EL[ELS[i]].n,op:tapLocked?.35:1,onClick:()=>this.choose(myP,ELS[i])})):[];
+    const trinLabels=(!mob&&inArena&&st.mode==='local'&&st.screen==='arena')?st.trin.map((p,i)=>({x:p.x+'px',y:(p.y+p.r*.85)+'px',name:EL[ELS[i]].n})):[];
+    const K={};[0,1].forEach(p=>{K['p'+p]={};ELS.forEach(el=>{const on=st.listen&&st.listen.p===p&&st.listen.el===el;K['p'+p][el]={label:on?'Appuyez…':kl(st.keys[p][el]),bd:on?GOLD:'rgba(233,227,214,.3)',bg:on?'rgba(216,184,120,.14)':'rgba(255,255,255,.03)',onClick:()=>this.setState({listen:{p,el},keyMsg:`Appuyez sur une touche pour ${['Joueur 1','Joueur 2'][p]} · ${EL[el].n} — Échap pour annuler.`,keyErr:false})}})});
+    const qd={low:'Basse : sans ombres ni réfraction, particules réduites — pour mobiles modestes.',medium:'Moyenne : sans ombres, eau simplifiée.',high:'Haute : ombres, eau réfractive, particules complètes.'};
+    const setQ=q=>{this.setState({quality:q});this.save({quality:q});this.eng&&this.eng.setQuality(q)};
+    const bn=st.banner,won=st.winner,dots='.'.repeat(st.tick%4);
+    const demoIds=[['wave','Eau › Feu'],['burn','Feu › Plante'],['grow','Plante › Eau'],['flare','Feu + Feu'],['siphon','Eau + Eau'],['thrive','Plante + Plante · écart'],['balance','Plante + Plante · égalité'],['solo','Temps écoulé'],['void','Aucun choix']];
+    const onS=st.online,onTitles={menu:'Choisissez',host:'Votre partie',join:'Rejoindre',joining:'Connexion…',found:'Adversaire trouvé'};
+    return {
+      canvasRef:this.canvasRef,appRef:this.appRef,
+      appW:frame?'min(390px,100vw)':'100%',appH:frame?'min(844px,100vh)':'100%',appR:frame?'44px':'0px',appShadow:frame?'0 0 0 10px #111416, 0 30px 80px rgba(0,0,0,.6)':'none',
+      loading:!st.ready,loadMsg:'Invocation de l’arène…',glFail:st.glFail,
+      isHome:st.ready&&st.screen==='home',isSetup:st.screen==='setup',inArena,isEnd:st.screen==='end',isSettings:st.screen==='settings',isRules:st.screen==='rules',isOnlineScreen:st.screen==='online',isNotes:st.screen==='notes',isDemo:st.screen==='demo',
+      isDesktop:!mob,isMobile:mob,isLocal:st.mode==='local'&&st.screen==='arena',isOnline:st.mode==='online'&&st.screen==='arena',
+      pulse:st.tick%2?1:.5,
+      goSetup:()=>this.go('setup',{mode:'local'}),goOnline:()=>this.go('online'),goSettings:()=>this.go('settings',{returnTo:'home'}),goSettingsFromSetup:()=>this.go('settings',{returnTo:'setup'}),goRules:()=>this.go('rules'),goNotes:()=>this.go('notes'),goDemo:()=>this.go('demo'),goHome:()=>this.quit(),
+      target:T,targetLine:`Premier à ${T} point${T>1?'s':''}`,decTarget:()=>this.setState(s=>({target:Math.max(1,s.target-1)})),incTarget:()=>this.setState(s=>({target:Math.min(10,s.target+1)})),
+      pips:Array.from({length:10},(_,i)=>({aria:`Score cible ${i+1}`,bg:i<T?GOLD:'transparent',onClick:()=>this.setState({target:i+1})})),
+      leg0:leg(0),leg1:leg(1),startLocal:()=>this.startMatch('local'),
+      p0:pl[0],p1:pl[1],timerOp:sel?1:0,ringOff:213.6*(1-tl/5),timerNum:Math.ceil(tl),timerColor:tl<=1.5&&sel?'#f0d58c':'#efe8da',
+      roundInfo:`Manche ${Math.max(1,st.round)} · premier à ${T}${st.sudden?' · mort subite':''}`,roundInfoShort:`Manche ${Math.max(1,st.round)} · cible ${T}`,
+      trinLabels,trinOp:sel?.9:0,showLegends:st.screen==='arena',quit:()=>this.quit(),
+      showMobHint:showTaps,mobHint:tapLocked?'Choix verrouillé':(hot?`${N[st.selP]} · touchez un élément`:'Touchez un élément'),showMobQuit:st.screen==='arena',
+      bannerTop:mob?'24%':'27%',bannerOp:bn?1:0,bannerY:bn?'0px':'10px',bTitle:bn?bn.title:'',bSub:bn?bn.sub:'',
+      trinTaps,simLoss:()=>this.simLoss(),
+      isGate:st.screen==='arena'&&st.phase==='gate'&&!st.lost,gateLabel:`Manche ${st.round} · tour par tour`,
+      gateTitle:st.gateP===0?'Joueur 1, à vous':'Passez le téléphone à Joueur 2',gateSub:st.gateP===0?'Joueur 2 détourne les yeux. Vous aurez 5 secondes pour toucher un élément.':(this.choices[0]?'Le choix de Joueur 1 est verrouillé et caché. Joueur 2 aura 5 secondes.':'Joueur 1 n’a pas choisi à temps. Joueur 2 aura 5 secondes.'),gateBtn:st.gateP===0?'Je suis prêt':'Joueur 2 — je suis prêt',gateGo:()=>this.gateGo(),
+      isLost:!!st.lost,lostTitle:st.lost==='retry'?'Reconnexion…':'Sylve ne répond plus',lostSub:st.lost==='retry'?'Tentative de reconnexion au serveur de partie.':'La manche en cours est annulée. Les scores sont conservés 60 secondes.',retry:()=>this.retry(),
+      endTitle:won===-1?'Match nul':(st.mode==='online'?(won===0?'Victoire':'Défaite'):'Victoire'),endSub:won===-1?'Les deux joueurs atteignent la cible ensemble':`${N[won??0]} remporte la partie`,replay:()=>this.replay(),
+      closeSettings:()=>this.closeSettings(),K,keyMsg:st.keyMsg,keyMsgColor:st.keyErr?'#e0907c':'#b9ae98',resetKeys:()=>{const k=DEFKEYS();this.setState({keys:k,listen:null,keyMsg:'Touches par défaut rétablies.',keyErr:false});this.save({keys:k})},
+      toggleDraw:()=>{const v=!st.drawOpt;this.setState({drawOpt:v});this.save({drawOpt:v})},drawBg:st.drawOpt?GOLD:'rgba(255,255,255,.06)',drawKnob:st.drawOpt?'25px':'4px',
+      toggleReduced:()=>{const v=!st.reduced;this.setState({reduced:v});this.save({reduced:v});this.eng&&this.eng.setReduced(v)},redBg:st.reduced?GOLD:'rgba(255,255,255,.06)',redKnob:st.reduced?'25px':'4px',
+      qOpts:[['low','Basse'],['medium','Moyenne'],['high','Haute']].map(([q,l])=>({label:l,bg:st.quality===q?GOLD:'transparent',fg:st.quality===q?'#0b0d0e':'#cfc6b4',onClick:()=>setQ(q)})),qDesc:qd[st.quality],
+      onTitle:onTitles[onS],onMenu:onS==='menu',onHosting:onS==='host',onJoining:onS==='join',onFound:onS==='joining'||onS==='found',
+      onHost:()=>this.setState({online:'host',copied:false}),onJoin:()=>this.setState({online:'join',joinMsg:''}),code:st.code,copyLabel:st.copied?'Lien copié':'Copier le lien d’invitation',copyLink:()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://elem3nts.game/p/K7F2QX')}catch(e){}this.setState({copied:true})},
+      dotsStr:dots,simArrive:()=>{this.setState({online:'found'});this.after(1600,()=>this.startMatch('online'))},
+      joinCode:st.joinCode,onJoinInput:e=>this.setState({joinCode:e.target.value.toUpperCase(),joinMsg:''}),joinMsg:st.joinMsg,joinMsgColor:'#e0907c',
+      doJoin:()=>{const c=st.joinCode.replace(/[^A-Z0-9]/g,'');if(c.length<6){this.setState({joinMsg:'Code incomplet — 6 caractères attendus.'});return}this.setState({online:'joining'});this.after(1300,()=>{this.setState({online:'found'});this.after(1500,()=>this.startMatch('online'))})},
+      foundSub:onS==='joining'?`Connexion à la partie ${st.joinCode||st.code}${dots}`:'Le duel commence…',foundName:onS==='joining'?'':'Sylve',
+      onBack:()=>onS==='menu'?this.go('home'):this.setState({online:'menu'}),onBackLabel:onS==='menu'?'Retour':'Annuler',
+      demoBottom:mob?'10px':'20px',sideL:()=>this.setState({demoSide:0}),sideR:()=>this.setState({demoSide:1}),sideLbg:st.demoSide===0?GOLD:'transparent',sideLfg:st.demoSide===0?'#0b0d0e':'#cfc6b4',sideRbg:st.demoSide===1?GOLD:'transparent',sideRfg:st.demoSide===1?'#0b0d0e':'#cfc6b4',
+      demoList:demoIds.map(([id,label])=>({label,op:st.phase==='idle'?1:.4,bd:'rgba(233,227,214,.2)',onClick:()=>this.runDemo(id)}))
+    };
+  }
+}
+</script>
+</body>
+</html>

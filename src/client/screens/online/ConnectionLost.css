@@ -1,0 +1,144 @@
+/*
+ * « Connexion interrompue » (maquette `isLost`) : voile flouté sur toute la scène, carte de verre
+ * bordée de rouge, deux actions. Valeurs de la maquette ; l'état final des animations d'entrée est
+ * exactement son rendu (`backwards`).
+ */
+.lost {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(3 5 7 / 72%);
+  backdrop-filter: blur(6px);
+  animation: lost-in var(--duration-base) var(--ease-standard) backwards;
+}
+
+.lost--leaving {
+  pointer-events: none;
+  animation: lost-out var(--duration-base) var(--ease-standard) both;
+}
+
+.lost__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(420px, 100%);
+  padding: 28px;
+  text-align: center;
+  background: rgb(8 11 13 / 88%);
+  border: 1px solid rgb(224 144 124 / 30%);
+  border-radius: 6px;
+  /* Unités du titre relatives à la carte (ci-dessous). */
+  container-type: inline-size;
+  animation: lost-card-in var(--duration-slow) var(--ease-out-expo) backwards;
+}
+
+.lost__card p,
+.lost__card h2 {
+  margin: 0;
+}
+
+.lost__kicker {
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-danger);
+}
+
+.lost__title {
+  font: 600 24px/1.2 var(--font-display);
+  color: var(--color-ink);
+  animation: lost-swap var(--duration-base) var(--ease-standard) backwards;
+}
+
+/*
+ * « Joueur 2 ne répond plus » tient sur une ligne, comme « Sylve ne répond plus » de la maquette : au
+ * téléphone, sa taille suit la largeur de la carte (24 px au plus) sur la même ligne de 28,8 px
+ * (24 px × 1,2), si bien que la carte garde exactement la hauteur de la maquette.
+ */
+.lost__title--fit {
+  font-size: min(24px, 6.8cqi);
+  line-height: 28.8px;
+  white-space: nowrap;
+}
+
+.lost__sub {
+  font: 400 15px/1.45 var(--font-body);
+  color: var(--color-ink-soft);
+  text-wrap: pretty;
+}
+
+/* Chiffres de largeur fixe : le décompte ne fait pas bouger la ligne à chaque seconde. */
+.lost__count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lost__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lost__retry,
+.lost__quit {
+  min-height: 46px;
+  padding: 14px 20px;
+  font: 600 14px/1 var(--font-display);
+  letter-spacing: 0.12em;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.lost__retry {
+  color: var(--color-ink-dark);
+  background: var(--color-gold);
+  border: none;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.lost__retry:hover {
+  background: var(--color-gold-hover);
+}
+
+.lost__quit {
+  color: var(--color-ink-strong);
+  background: transparent;
+  border: 1px solid var(--line);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.lost__quit:hover {
+  border-color: rgb(224 144 124 / 60%);
+}
+
+@keyframes lost-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes lost-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lost-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@keyframes lost-swap {
+  from {
+    opacity: 0;
+  }
+}

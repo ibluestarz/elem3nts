@@ -1,0 +1,16 @@
+.keycap {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(233 227 214 / 35%);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 600 13px/1 var(--font-body);
+}
+
+.keycap--arena {
+  background: rgb(5 8 11 / 50%);
+}

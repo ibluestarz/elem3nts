@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node", "@testing-library/jest-dom/vitest"],
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["tests/unit", "tests/tooling", "tests/setup.ts", "src/client", "src/domain", "src/shared"],
+  "exclude": ["tests/tooling/fixtures", "src/client/scene/engine.js"]
+}

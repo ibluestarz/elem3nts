@@ -1,0 +1,106 @@
+/* Pièces communes aux panneaux de la maquette (préparation, règles, réglages). */
+.panel-label {
+  margin: 0;
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.panel-label--gold {
+  color: var(--color-gold);
+}
+
+.panel-heading {
+  margin: 0;
+  font: 600 28px/1 var(--font-display);
+  letter-spacing: 0.06em;
+}
+
+.btn-ghost {
+  font: 600 13px/1 var(--font-display);
+  letter-spacing: 0.12em;
+  color: var(--color-ink-strong);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 12px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 44px;
+  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.btn-ghost:hover {
+  border-color: rgb(216 184 120 / 60%);
+  background: rgb(255 255 255 / 3%);
+}
+
+.btn-ghost--large {
+  font-size: 14px;
+  padding: 14px 20px;
+  min-height: 46px;
+}
+
+.btn-gold {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 15px/1 var(--font-display);
+  letter-spacing: 0.12em;
+  color: var(--color-ink-dark);
+  background: var(--color-gold);
+  border: none;
+  padding: 14px 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 46px;
+  transition: background var(--duration-fast) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
+}
+
+.btn-gold:hover {
+  background: var(--color-gold-hover);
+}
+
+.btn-gold[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.btn-gold[aria-disabled='true']:hover {
+  background: var(--color-gold);
+}
+
+.btn-gold__hint {
+  font: 600 11px/1 var(--font-caps);
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+}
+
+.link-button {
+  align-self: flex-start;
+  font: 500 14px/1 var(--font-body);
+  color: var(--color-gold);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.link-button:hover {
+  color: var(--color-gold-bright);
+}
+
+.element-fire {
+  color: var(--color-fire);
+}
+
+.element-water {
+  color: var(--color-water);
+}
+
+.element-plant {
+  color: var(--color-plant);
+}

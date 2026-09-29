@@ -1,0 +1,47 @@
+/* Minuteur de sélection (maquette `timerOp`, `ringOff`, `timerNum`) : valeurs reprises à l'identique. */
+.round-timer {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.round-timer--active {
+  opacity: 1;
+}
+
+.round-timer__ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+/* Glissement continu entre deux pas de 50 ms ; l'état affiché reste celui du pas. */
+.round-timer__progress {
+  transition: stroke-dashoffset 50ms linear;
+}
+
+.round-timer__number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 32px/1 var(--font-display);
+  color: var(--color-ink-strong);
+}
+
+.round-timer__number--urgent {
+  color: var(--color-gold-bright);
+}
+
+/* Téléphone (maquette `isMobile`) : anneau de 58 px, chiffre de 24 px. */
+.round-timer--compact {
+  width: 58px;
+  height: 58px;
+}
+
+.round-timer--compact .round-timer__number {
+  font-size: 24px;
+}

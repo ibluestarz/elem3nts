@@ -1,0 +1,78 @@
+/*
+ * Jetons de design issus de la maquette elem3nts-design/ELEM3NTS.dc.html.
+ * Toute nouvelle valeur visuelle passe par ces variables pour garder une DA cohérente.
+ */
+:root {
+  /* Fonds */
+  --color-void: #030405;
+  --color-ground: #040506;
+  --color-arena: #05080b;
+
+  /* Encres */
+  --color-ink: #e9e3d6;
+  --color-ink-strong: #efe8da;
+  --color-ink-soft: #cfc6b4;
+  --color-ink-muted: #a79f8f;
+  --color-ink-faint: #b9ae98;
+
+  --color-ink-sand: #ddd4c2;
+  --color-ink-dark: #0b0d0e;
+
+  /* Accent */
+  --color-gold: #d8b878;
+  --color-gold-bright: #f0d58c;
+  --color-gold-hover: #e6c98c;
+  --color-danger: #e0907c;
+
+  /* Éléments : repli sRGB pour les moteurs sans oklch() (Chrome 109), valeurs exactes ci-dessous */
+  --color-fire: #ffa05b;
+  --color-water: #68ccf5;
+  --color-plant: #87dc8a;
+  --color-fire-vivid: #ffa359;
+  --color-water-vivid: #5dcdfa;
+  --color-plant-vivid: #88e48c;
+
+  /* Connexion en ligne établie (maquette : pastille « En ligne ») */
+  --color-online: #81d584;
+
+  /* Traits et surfaces de la maquette */
+  --line-strong: rgb(233 227 214 / 40%);
+  --line: rgb(233 227 214 / 30%);
+  --line-soft: rgb(233 227 214 / 25%);
+  --line-faint: rgb(233 227 214 / 8%);
+  --line-gold: rgb(216 184 120 / 20%);
+  --surface-glass: rgb(8 11 13 / 82%);
+  --surface-glass-strong: rgb(8 11 13 / 90%);
+  --surface-glass-deep: rgb(8 11 13 / 92%);
+
+  /* Typographie (piles identiques à la maquette) */
+  --font-body: 'Alegreya Sans', sans-serif;
+  --font-caps: 'Alegreya Sans SC', sans-serif;
+  --font-display: 'Cinzel', serif;
+
+  /* Mouvement — retours visuels, transitions et toasts des tickets suivants */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 600ms;
+
+  --duration-toast: 4000ms;
+
+  /* Focus visible (RGAA 10.7) */
+  --focus-ring: 2px solid var(--color-gold-bright);
+  --focus-offset: 3px;
+}
+
+/* Couleurs exactes de la maquette quand le moteur gère oklch(). */
+@supports (color: oklch(0 0 0)) {
+  :root {
+    --color-fire: oklch(0.8 0.15 52);
+    --color-water: oklch(0.8 0.11 228);
+    --color-plant: oklch(0.82 0.14 145);
+    --color-fire-vivid: oklch(0.82 0.16 52);
+    --color-water-vivid: oklch(0.8 0.12 228);
+    --color-plant-vivid: oklch(0.84 0.15 145);
+    --color-online: oklch(0.8 0.14 145);
+  }
+}

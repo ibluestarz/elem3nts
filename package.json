@@ -1,0 +1,59 @@
+{
+  "name": "elem3nts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ELEM3NTS — duel Feu · Eau · Plante à deux joueurs, en local ou en room privée.",
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && wrangler deploy --dry-run",
+    "preview": "vite preview --strictPort",
+    "test:functional": "vitest run",
+    "lint": "eslint . --max-warnings=0",
+    "test:e2e": "playwright test",
+    "verify": "npm run build && npm run test:functional && npm run lint && npm run test:e2e",
+    "baseline:mockup": "node scripts/capture-mockup-baseline.ts",
+    "port:engine": "node scripts/port-engine.ts"
+  },
+  "browserslist": [
+    "defaults and fully supports es6-module",
+    "maintained node versions"
+  ],
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.62.0",
+    "@cloudflare/workers-types": "5.20260928.1",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.160.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "autoprefixer": "10.6.1",
+    "browserslist": "4.29.1",
+    "eslint": "10.11.0",
+    "eslint-plugin-jsx-a11y-x": "0.2.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.12.0",
+    "jsdom": "30.1.1",
+    "postcss": "8.5.28",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1",
+    "vite": "8.3.1",
+    "vitest": "5.0.2",
+    "wrangler": "4.143.0"
+  }
+}

@@ -1,0 +1,23 @@
+// Worker ELEM3NTS : API /api/* et fichiers statiques Vite sur une seule origine, un Durable Object SQLite par room
+// (ARCHITECTURE « Hébergement », DECISIONS D20 et D35). Aucun secret ni variable ici : les secrets passent par
+// `wrangler secret` ou `.dev.vars` (ignoré par git). Environnements staging et production : PFC-022.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "elem3nts",
+  "main": "src/worker/index.ts",
+  // Date du runtime workerd fourni par wrangler 4.143.0 : ne jamais la dépasser.
+  "compatibility_date": "2026-09-26",
+  // Aucune télémétrie wrangler depuis les gates locaux ou la CI.
+  "send_metrics": false,
+  "assets": {
+    // Chemin rechargé côté front (ex. /salle/CODE) : index.html, pour les navigations uniquement.
+    "not_found_handling": "single-page-application",
+    // L'API passe avant les fichiers et le repli SPA : une route inconnue répond JSON 404, jamais index.html.
+    "run_worker_first": ["/api", "/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // Migrations append-only : ne jamais modifier ni supprimer une étape déjà déployée.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

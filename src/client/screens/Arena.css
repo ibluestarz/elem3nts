@@ -1,0 +1,439 @@
+/* Arène (maquette `inArena`) : valeurs reprises à l'identique. */
+.arena {
+  position: absolute;
+  inset: 0;
+}
+
+.arena p {
+  margin: 0;
+}
+
+/* ---- Bureau ---- */
+.arena__player {
+  position: absolute;
+  top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-shadow: 0 2px 16px rgb(0 0 0 / 95%);
+}
+
+.arena__player--p1 {
+  left: 34px;
+}
+
+.arena__player--p2 {
+  right: 34px;
+  align-items: flex-end;
+}
+
+.arena__name {
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.arena__score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.arena__player--p2 .arena__score-row {
+  flex-direction: row-reverse;
+}
+
+.arena__score {
+  font: 600 64px/0.9 var(--font-display);
+}
+
+.arena__delta {
+  font: 700 28px/1 var(--font-display);
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.35s,
+    transform 0.35s;
+}
+
+.arena__delta--shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.arena__delta.is-gain,
+.arena-m__delta.is-gain {
+  color: var(--color-gold-bright);
+}
+
+.arena__delta.is-loss,
+.arena-m__delta.is-loss {
+  color: var(--color-danger);
+}
+
+.arena__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 15px/1 var(--font-body);
+  color: var(--color-ink-muted);
+  min-height: 16px;
+}
+
+.arena__player--p2 .arena__status {
+  flex-direction: row-reverse;
+}
+
+.arena__status--locked {
+  color: var(--color-gold);
+}
+
+.arena__status--fire {
+  color: var(--color-fire);
+}
+
+.arena__status--water {
+  color: var(--color-water);
+}
+
+.arena__status--plant {
+  color: var(--color-plant);
+}
+
+.arena__dot {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: currentcolor;
+  opacity: 0;
+}
+
+/* Verrouillage et révélation : le losange apparaît avec un éclat bref ; état final identique à la maquette. */
+.arena__status--locked .arena__dot,
+.arena__status--fire .arena__dot,
+.arena__status--water .arena__dot,
+.arena__status--plant .arena__dot {
+  opacity: 1;
+  animation: arena-lock var(--duration-slow) var(--ease-out-expo) backwards;
+}
+
+.arena__status-text {
+  animation: arena-status var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.arena__center {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-shadow: 0 2px 14px #000;
+}
+
+.arena__round {
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+
+.arena__trin {
+  position: absolute;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  text-shadow: 0 1px 8px #000;
+  pointer-events: none;
+}
+
+.arena__trin--shown {
+  opacity: 0.9;
+}
+
+.arena__legend {
+  position: absolute;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-shadow: 0 1px 10px #000;
+}
+
+.arena__legend--p1 {
+  left: 34px;
+}
+
+.arena__legend--p2 {
+  right: 34px;
+  align-items: flex-end;
+}
+
+.arena__legend-name {
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.arena__keys {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arena__key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.arena__element {
+  font: 500 14px/1 var(--font-body);
+}
+
+.arena__quit {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  font: 500 12px/1 var(--font-caps);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.arena__quit:hover {
+  color: var(--color-gold);
+}
+
+/* ---- Téléphone ---- */
+.arena-m__top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 18px 16px 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 8px;
+  text-shadow: 0 2px 14px rgb(0 0 0 / 95%);
+}
+
+.arena-m__player {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.arena-m__player--p1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.arena-m__player--p2 {
+  grid-column: 3;
+  grid-row: 1;
+  align-items: flex-end;
+}
+
+.arena-m__name {
+  font: 500 10px/1 var(--font-caps);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.arena-m__score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.arena-m__player--p2 .arena-m__score-row {
+  flex-direction: row-reverse;
+}
+
+.arena-m__score {
+  font: 600 40px/0.9 var(--font-display);
+}
+
+.arena-m__delta {
+  font: 700 20px/1 var(--font-display);
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.arena-m__delta--shown {
+  opacity: 1;
+}
+
+.arena-m__status {
+  font: 500 13px/1.2 var(--font-body);
+  color: var(--color-ink-muted);
+}
+
+.arena-m__player--p2 .arena-m__status {
+  text-align: right;
+}
+
+.arena-m__center {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.arena-m__timer {
+  width: 58px;
+  height: 58px;
+  opacity: 0;
+}
+
+.arena-m__round {
+  font: 500 10px/1 var(--font-caps);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+
+.arena-m__hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(19cqh + 12px);
+  text-align: center;
+  font: 500 13px/1 var(--font-body);
+  color: var(--color-ink-soft);
+  text-shadow: 0 1px 10px #000;
+  pointer-events: none;
+  animation: arena-status var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.arena-m__actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.arena-m__quit {
+  font: 500 12px/1 var(--font-caps);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: none;
+  padding: 12px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+/* ---- Bannière ---- */
+.arena__banner {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  transform: translate(-50%, 0);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(720px, 92%);
+  pointer-events: none;
+  text-shadow:
+    0 2px 24px #000,
+    0 0 60px rgb(0 0 0 / 80%);
+  transition:
+    opacity 0.45s,
+    transform 0.45s;
+  animation: arena-banner-in 0.45s ease backwards;
+}
+
+.arena__banner--compact {
+  top: 24%;
+}
+
+.arena__banner--hidden {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+}
+
+.arena__banner-title {
+  font: 600 clamp(26px, 3.6cqw, 48px)/1.05 var(--font-display);
+  letter-spacing: 0.06em;
+  text-wrap: balance;
+}
+
+.arena__banner-sub {
+  font: 500 clamp(15px, 1.6cqw, 19px)/1.35 var(--font-body);
+  color: var(--color-ink-sand);
+  text-wrap: pretty;
+}
+
+@keyframes arena-banner-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+}
+
+@keyframes arena-lock {
+  from {
+    opacity: 0;
+    transform: rotate(45deg) scale(2.4);
+    box-shadow: 0 0 14px 4px rgb(216 184 120 / 70%);
+  }
+}
+
+@keyframes arena-status {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Statuts au téléphone (maquette `p0.sc`) : or au verrouillage, couleur de l'élément à la révélation. */
+.arena-m__status--locked {
+  color: var(--color-gold);
+}
+
+.arena-m__status--fire {
+  color: var(--color-fire);
+}
+
+.arena-m__status--water {
+  color: var(--color-water);
+}
+
+.arena-m__status--plant {
+  color: var(--color-plant);
+}
+
+.arena-m__status-text {
+  animation: arena-status var(--duration-base) var(--ease-out-expo) backwards;
+}

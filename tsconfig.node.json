@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "erasableSyntaxOnly": true,
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js",
+    "postcss.config.js",
+    "scripts",
+    "tests/e2e",
+    "tests/integration"
+  ],
+  "exclude": ["tests/integration/harness"]
+}

@@ -1,0 +1,8 @@
+/* Canvas de la scène 3D (maquette : premier enfant de la scène, plein cadre). */
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}

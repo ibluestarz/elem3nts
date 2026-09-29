@@ -1,0 +1,88 @@
+/*
+ * Notifications : verre sombre et filet doré, dans la continuité des panneaux de la maquette.
+ * En haut : les actions principales (menu, bouton Commencer) sont en bas de l'écran.
+ */
+.toasts {
+  position: absolute;
+  left: 50%;
+  top: max(16px, env(safe-area-inset-top));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, calc(100% - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 10px 12px 16px;
+  background: var(--surface-glass-deep);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line-gold);
+  border-radius: 6px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 55%);
+  color: var(--color-ink-soft);
+  font: 500 15px/1.35 var(--font-body);
+  text-wrap: pretty;
+  pointer-events: auto;
+  animation: toast-in var(--duration-base) var(--ease-out-expo) both;
+}
+
+.toast--leaving {
+  animation: toast-out var(--duration-fast) var(--ease-standard) both;
+}
+
+.toast__mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--color-gold);
+  transform: rotate(45deg);
+}
+
+.toast__message {
+  flex: 1;
+}
+
+.toast__close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--color-ink-muted);
+  font: 400 20px/1 var(--font-body);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.toast__close:hover {
+  color: var(--color-gold);
+  background: rgb(255 255 255 / 4%);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}

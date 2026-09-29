@@ -1,0 +1,13 @@
+// Worker de test (tests d'intégration du runtime Workers local) : mêmes date, liaison et migration que
+// ../../../wrangler.jsonc, avec l'entrée de test ; sans fichiers statiques (vérifiés en E2E sur le build).
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "elem3nts-harness",
+  "main": "entry.ts",
+  "compatibility_date": "2026-09-26",
+  "send_metrics": false,
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

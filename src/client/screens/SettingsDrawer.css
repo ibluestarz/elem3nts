@@ -1,0 +1,221 @@
+/* Tiroir Réglages (maquette `isSettings`) : valeurs reprises à l'identique. */
+.settings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(3 5 7 / 40%);
+  animation: settings-veil var(--duration-base) var(--ease-standard) backwards;
+}
+
+.settings__panel {
+  width: min(500px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface-glass-deep);
+  backdrop-filter: blur(14px);
+  border-left: 1px solid rgb(216 184 120 / 18%);
+  padding: 30px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  animation: settings-slide var(--duration-slow) var(--ease-out-expo) backwards;
+}
+
+.settings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-faint);
+}
+
+.settings__section--first {
+  padding-top: 0;
+  border-top: none;
+}
+
+.settings__section--display {
+  gap: 16px;
+}
+
+.settings__help {
+  margin: 0;
+  font: 400 14px/1.45 var(--font-body);
+  color: var(--color-ink-faint);
+  text-wrap: pretty;
+}
+
+.settings__keys {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.settings__player {
+  margin: 0;
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.settings__element {
+  font: 600 15px/1 var(--font-display);
+  padding-right: 6px;
+}
+
+.settings__key {
+  height: 46px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  background: rgb(255 255 255 / 3%);
+  color: var(--color-ink-strong);
+  font: 600 16px/1 var(--font-body);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.settings__key:hover {
+  border-color: rgb(216 184 120 / 55%);
+}
+
+.settings__key--listening {
+  border-color: var(--color-gold);
+  background: rgb(216 184 120 / 14%);
+  animation: settings-listen 1.2s ease-in-out infinite;
+}
+
+.settings__feedback {
+  margin: 0;
+  min-height: 40px;
+  font: 500 14px/1.4 var(--font-body);
+  color: var(--color-ink-faint);
+  text-wrap: pretty;
+}
+
+.settings__flash {
+  display: block;
+  animation: settings-flash var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.settings__feedback--error {
+  color: var(--color-danger);
+}
+
+.settings__toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings__toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings__name {
+  font: 600 16px/1.2 var(--font-body);
+}
+
+.settings__desc {
+  font: 400 14px/1.45 var(--font-body);
+  color: var(--color-ink-faint);
+  text-wrap: pretty;
+}
+
+.settings__layout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: settings-flash var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.settings__quality {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings__segments {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgb(233 227 214 / 15%);
+  border-radius: 4px;
+}
+
+.settings__segment {
+  flex: 1;
+  height: 40px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-ink-soft);
+  font: 600 14px/1 var(--font-body);
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+
+.settings__segment:hover {
+  background: rgb(255 255 255 / 4%);
+}
+
+.settings__segment--on,
+.settings__segment--on:hover {
+  background: var(--color-gold);
+  color: var(--color-ink-dark);
+}
+
+.settings__quality-desc {
+  font: 400 13px/1.4 var(--font-body);
+  color: var(--color-ink-muted);
+}
+
+@keyframes settings-veil {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Glissement inférieur à la marge intérieure (28 px) : aucun contrôle ne sort de l'écran pendant
+ * l'animation, sans quoi un focus ou un clic précoce ferait défiler le panneau (mesuré en E2E).
+ */
+@keyframes settings-slide {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes settings-flash {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes settings-listen {
+  50% {
+    box-shadow: 0 0 0 3px rgb(216 184 120 / 20%);
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.vite/
+*.log
+.DS_Store
+*:Zone.Identifier
+# Runtime Workers local (état Durable Object, config de déploiement redirigée) et secrets locaux
+.wrangler/
+.dev.vars*
+.env*

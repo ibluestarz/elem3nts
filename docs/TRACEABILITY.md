@@ -1,0 +1,74 @@
+# Traçabilité du MVP
+
+La colonne validation indique les preuves à produire, pas des tests déjà exécutés.
+Chaque ticket comporte deux scénarios identifiés PFC-NNN-S1/S2 et des critères complémentaires.
+
+| Besoin initial / contrainte | Tickets | Validation cible |
+| --- | --- | --- |
+| Page web + Espace pour lancer | 001, 004, 005, 009 | E2E clavier accueil → partie |
+| X entier 1–10, nul ON/OFF | 003, 004, 009 | Bornes et settings invalides (saisie validée sans arrondi) |
+| Feu bat plante, eau bat feu, plante bat eau | 002 | Matrice des 9 confrontations |
+| Deux feux +1 chacun | 002, 003 | Passage simultané à X |
+| Deux eaux -1 chacun | 002, 003 | Plancher zéro et prolongation |
+| Deux plantes : retardataire gagne | 002 | Retard J1/J2 et égalité |
+| Choix cachés et fenêtre de choix de 5 s | 005, 006, 010, 014, 016, 024 | Temps et capture des trames |
+| Choix unique +1, aucun choix = manche annulée (D27) | 024, 006, 014 | Oracle 16 couples, échéance |
+| Local sur un seul téléphone, tour par tour | 025 | Voile, 5 s chacun, parité maquette |
+| Effets différents si mêmes éléments | 008, 021, 026 | Trois rendus + texte accessibles |
+| Victoire et écran résultat | 003, 007, 016 | Trois résultats et attribution unique |
+| Rejouer avec Espace | 007, 016 | Reset scores, conservation trophées |
+| Trophées de session | 003, 007, 017 | Séries et reconnexion après fin |
+| Nul simultané : trophée chacun | 003, 009, 019 | ON : fin double, OFF : poursuivre |
+| Local même clavier | 005, 009 | Touches physiques, repeat, champs, focus, disposition affichée |
+| WebSocket en ligne | 010, 011, 013, 014, 016 | Deux vrais clients et autorité serveur |
+| Room privée par code | 012, 015, 018 | Join, concurrence, plein, expiration |
+| TypeScript, React, Vite, Three.js | 001, 008 | Build strict et scène découplée |
+| Browserslist exact + Autoprefixer | 001, 021 | Config, CSS et cibles JS documentés |
+| Build → fonctionnel → ESLint | 001, 022, 023 | Pipeline fail-fast ordonnée |
+| Playwright Microsoft | 009, 019, 022 | Chromium/Firefox/WebKit |
+| Déploiement Cloudflare Worker | 011, 022, 023 | Assets, API, WSS, migration, smoke |
+| Fiabilité réseau et protection des choix | 010, 013, 014, 017, 019, 020 | Malformés, doublons, pauses, logs |
+| Expiration et maîtrise des ressources | 018, 020, 021 | TTL, quotas, ressources GPU |
+
+## Preuves automatisées existantes
+| Ticket / scénario | Test |
+| --- | --- |
+| PFC-001-S1, AC1 | `tests/e2e/smoke.spec.ts` (3 navigateurs) ; `tests/unit/client/App.test.tsx` |
+| PFC-001-S2 | `tests/tooling/typecheck-gate.test.ts` |
+| PFC-001-AC1 (rendu maquette) | `tests/e2e/visual.spec.ts` (Chromium, tolérance nulle) |
+| PFC-001-AC3 | `tests/tooling/browser-targets.test.ts` |
+| PFC-002-S1, S2, AC1–AC3 | `tests/unit/domain/round.test.ts` (projet Vitest `domain`, 1 521 cas exhaustifs) |
+| PFC-002-AC3 (pureté) | `tests/tooling/domain-purity.test.ts` ; règles ESLint `src/domain/**` |
+| PFC-003-S1, S2, AC1, AC2, exemples chiffrés SPEC | `tests/unit/domain/match.test.ts` (oracle R07/R08 : 2 600 cas) |
+| PFC-024-S1, S2, AC1, AC2 | `tests/unit/domain/round.test.ts`, `tests/unit/domain/match.test.ts` (blocs PFC-024) |
+| PFC-004-S1, S2, AC1–AC3 | `tests/unit/client/Stage.test.tsx`, `tests/unit/client/game.test.ts`, `tests/unit/domain/settings.test.ts`, `tests/e2e/setup.spec.ts` (3 navigateurs) |
+| PFC-004 (rendu maquette) | `tests/e2e/visual.spec.ts` : 14 écrans d'interface, tolérance nulle |
+| PFC-004 (touches, préférences) | `tests/unit/client/keys.test.ts`, `tests/unit/client/preferences.test.ts` |
+| PFC-005-S1, S2, AC1–AC3 | `tests/unit/domain/selection.test.ts`, `tests/unit/client/{game,keys}.test.ts`, `tests/unit/client/Stage.test.tsx`, `tests/e2e/keyboard.spec.ts` (3 navigateurs, vrai clavier) |
+| PFC-005 (rendu maquette) | `tests/e2e/visual.spec.ts` : 3 états de sélection, minuteur masqué jusqu'à PFC-006 |
+| PFC-006-S1, S2, AC1–AC3 | `tests/unit/client/game.test.ts` (horloge injectée), `tests/unit/client/useCycle.test.tsx`, `tests/unit/client/Stage.test.tsx`, `tests/unit/client/copy.test.ts`, `tests/e2e/cycle.spec.ts` (3 navigateurs) |
+| PFC-006 (rendu maquette) | `tests/e2e/visual.spec.ts` : minuteur, révélation, résultats, mort subite, écran de fin |
+| PFC-007-S1, S2, AC1–AC3 | `tests/unit/client/game.test.ts`, `tests/unit/client/Stage.test.tsx`, `tests/e2e/rematch.spec.ts` (3 navigateurs : série, nul ON, Espace maintenu, accueil, rechargement) |
+| PFC-007 (rendu maquette) | `tests/e2e/visual.spec.ts` : écran de fin, zone des trophées exclue et contrôlée |
+| PFC-008-S1, AC1 | `tests/unit/client/sceneCommands.test.ts` (révélation, effet, jamais de choix caché), `tests/unit/client/game.test.ts` (chronologie `clash`), `tests/e2e/scene.spec.ts` (effets distincts, Chromium) |
+| PFC-008-S2, AC2 | `tests/e2e/scene.spec.ts` (sans WebGL : 3 navigateurs ; contexte perdu ; mouvements réduits), `tests/unit/client/sceneBridge.test.tsx`, `tests/unit/client/{sceneHost,sceneHostTimeout,frameWatch}.test.ts*`, `tests/unit/client/Stage.test.tsx` (toast unique) |
+| PFC-008-AC3 | `tests/e2e/scene.spec.ts` (un contexte, une boucle, onglet masqué), `tests/unit/client/sceneHost.test.tsx` (destroy sous StrictMode), `tests/unit/client/engine-port.test.ts` (correctifs `destroy`) |
+| PFC-008 (rendu maquette) | `tests/e2e/visual.spec.ts` (interface, moteur bouchonné) ; `tests/e2e/scene.spec.ts` (accueil 3D, tolérance calibrée) |
+| PFC-009-S1, S2, AC1–AC3 | `tests/e2e/local.spec.ts` (3 navigateurs, clavier seul, build de production : parcours complet nul OFF et revanche, mort subite X = 1 et X = 10, frappe tardive ignorée, garde build) ; victoire/nul avec nul ON : `tests/e2e/rematch.spec.ts` (PFC-007-S1) ; pilote partagé `tests/e2e/local-driver.ts` |
+| PFC-010-S1, S2, AC1–AC3 | `tests/unit/protocol/projection.test.ts` (S1, toutes phases dont pause et reconnexion, 16 sélections × 2 places, aucun token/hash, allowlist), `tests/unit/protocol/commands.test.ts` (S2, chaque commande, type, taille UTF-8, version, élément, identifiants, champs inconnus, `__proto__`, 5 000 trames aléatoires), `tests/unit/protocol/policy.test.ts` (matrice commande × phase × place, codes d'erreur), `tests/unit/protocol/server.test.ts` (ack/erreurs sans fuite, relecture client) ; pureté : `tsconfig.shared.json`, règles ESLint `src/shared/**` |
+| PFC-011-S1, S2, AC1–AC3 | `tests/integration/storage.test.ts` (S1 : runtime Workers local réel, 5 phases dont sélection à choix privés et pause, écriture → éviction du Durable Object → même revision et même état ; révision périmée, état hors schéma, isolation, schemaVersion plus récent/inconnu/altéré : JSON 503 sans donnée, ligne intacte), `tests/integration/router.test.ts` (S2 : routes, méthodes et en-têtes du JSON 404), `tests/integration/config.test.ts` (AC3 : SPA, `run_worker_first`, liaison ↔ migration SQLite v1, aucun secret), `tests/e2e/worker.spec.ts` (AC1, 3 navigateurs : même origine, navigation `/api/inconnue`, rechargement d'une route front) ; `npm run build` (bundle Worker + `wrangler deploy --dry-run`) ; garde ESLint `src/worker/**` |
+| PFC-012-S1, S2, AC1–AC3 | `tests/integration/rooms.test.ts` (runtime Workers local réel : création J1, invitation J2, course de join en rafale, troisième/expiré/code invalide refusés, collisions sans écrasement, hash seul persisté, réservations abandonnées nettoyées, méthodes), `tests/integration/storage.test.ts` (migration v1 → v2, invariants des places), `tests/integration/tokens.test.ts`, `tests/unit/protocol/entry.test.ts`, `tests/e2e/worker.spec.ts` (3 navigateurs : invitation, troisième refusé, code inconnu) |
+| PFC-013-S1, S2, AC1–AC3 | `tests/integration/sockets.test.ts` (vraies sockets réseau sur le runtime Workers local : S1 état projeté pour J2 et place persistée ; timeout 5 s en horloge réelle sans aucune trame, échéance exacte trop tardive, alarme unique ; token inconnu/hors format, trame avant authentification, place désignée par le client : erreur puis 4401 ; réservation échue, room fermée, code inconnu : 4404 ; S2 NOT_HOST sans écriture ; second authenticate ; ping ; présence à la fermeture ; isolation de deux rooms ; remplacement 4409 sans écriture ; reconstruction ; Origin tiers/autre port/`null`/absente : 403 avant toute room ; 405, 426, code mal formé ; > 4 096 octets, débit 20/s rafale 30, 3e dépassement : 4429 ; binaire ; aucune trame ne porte token ni hash), `tests/unit/protocol/socket.test.ts` (constantes et codes de fermeture), `tests/e2e/worker.spec.ts` (3 navigateurs, même origine : S1 et présence publiée, second onglet → 4409) |
+| PFC-014-S1, S2, AC1–AC3 | `tests/integration/game.test.ts` (vraies sockets sur le runtime Workers local, horloge figée, alarmes exécutées à la main : S1 alarme traitée deux fois à la résolution et à la fin, scores et trophées une fois ; S2 `roundId` 2 pendant la manche 3 → `STALE_ROUND` sans changement ; prêts et ouverture `starting`, réglages et confirmations, `NOT_HOST`, `STALE_SETTINGS`, double prêt et rafale ; deadline de 5 s jamais avancée, choix à l'instant exact trop tardif, R11, R12, mort subite, fin et revanche ; doublon de `requestId`, alarme en retard, reconstruction par éviction, panne de stockage sur alarme et sur commande, `leave`), `tests/integration/storage.test.ts` (schéma v3, migration v2 → v3, invariants), `tests/unit/client/cycle-parity.test.ts` (chronologie locale = serveur), `tests/unit/protocol/{policy,projection}.test.ts` (phase `starting`) |
+| PFC-015-S1, S2, AC1–AC3 | `tests/e2e/lobby.spec.ts` (3 navigateurs, Worker local réel, contextes indépendants : S1 Espace J1 puis J2 → même `matchId` à l'écran et dans les trames `starting` ; S2 J2 prêt, X et nul changés par J1 → confirmations retirées, réglages visibles ; AC1 lien `/p/CODE` copié, token absent de l'URL, du DOM, du stockage et de la console, lien ouvert chez l'invité ; AC3 double clic → un seul POST, room pleine, absente, code invalide, réseau coupé, presse-papier refusé, départ de J1), `tests/unit/client/OnlineScreen.test.tsx` (chargement, erreurs, réglages sérialisés, Espace, fermetures), `tests/unit/client/roomConnection.test.ts`, `tests/unit/client/onlineApi.test.ts`, `tests/unit/client/onlineInvite.test.ts`, `tests/e2e/visual.spec.ts` (`online-menu`, `online-join`) |
+| PFC-016-S1, S2, AC1–AC3 | `tests/e2e/online.spec.ts` (3 navigateurs, Worker local réel, horloge réelle : S1 J2 presse KeyA → `submit-choice` feu sans place, verrou seul chez J1, trames reçues sans élément avant le premier `round-result`, même révélation, même fin et mêmes trophées vus de chaque côté ; S2/AC3 seul J1 confirme → attente, même `matchId`, scores intacts ; l'hôte change X avant la revanche ; deux confirmations → nouveau `matchId`, 0/0, trophées conservés ; départ en pleine partie), `tests/unit/client/OnlineGame.test.tsx` (S1, AC1, AC2 : décompte à zéro sans révélation, état retardé ignoré, chronologie du résultat ; latence ; S2 ; réglages en fin de partie ; quitter), `tests/unit/client/onlineGame.test.ts` (horloge monotone, chronologie D09, point de vue, scène), `tests/e2e/visual.spec.ts` (7 états `online-*` de l'arène et de la fin) |
+| PFC-017-S1, S2, AC1–AC3 | `tests/integration/reconnect.test.ts` (runtime Workers local réel, horloge figée : S1 sélection à 2 s restantes, J2 revient 10 s plus tard → même reste, mêmes choix cachés, aucun élément dans les trames avant révélation ; S2 reconnexion à t = 30 000 ms → room fermée, 4404, stockage et alarme effacés, join refusé ; 29 999 ms repris ; ouverture et résultat en pause ; deux absents sans report ; lobby et fin de partie ; coupure à l'échéance exacte ; dernier résultat réglé une fois, jamais après expiration ; 4409 sans effet ; instance perdue réconciliée), `tests/integration/storage.test.ts` (schéma v4, migration v3 → v4), `tests/unit/client/OnlineReconnect.test.tsx` et `roomConnection.test.ts` (sessionStorage, reprise après rechargement, reprise bornée, écran « Connexion interrompue », décompte), `tests/e2e/reconnect.spec.ts` (3 navigateurs, Worker réel : rechargement, coupure réseau, fermeture à 30 s), `tests/e2e/visual.spec.ts` (`online-lost`, `online-lost-retry`) |
+| PFC-018-S1, S2, AC1–AC3 | `tests/integration/expiry.test.ts` (runtime Workers local réel, horloge figée : S1 manches vides jusqu'à 30 min → `room-closed {inactive}` aux deux, 4404, sans trophée ; manche vide seule sans fermeture (R12) ; S2 pings sans effet, ping à l'échéance exacte → fermeture ; activité utile ou non ; invité tardif ; 4 h malgré l'activité et en pause → `max-duration` ; motif de la première échéance ; alarmes concurrentes ; alarme et commandes simultanées ; nettoyage : tables, alarme, `join` 404, ancien token 4404), `tests/integration/storage.test.ts` (schéma v5, migration v4 → v5, v1 fermée par la durée maximale), `tests/integration/rooms.test.ts` (AC3 : J2 jamais connecté libéré), `tests/integration/game.test.ts` (AC3 : `leave` ferme pour les deux), `tests/unit/client/OnlineExpiry.test.tsx`, `tests/e2e/expiry.spec.ts` (3 navigateurs : message persistant, retour au menu) |
+| PFC-019-S1, S2, AC1–AC3 | `tests/integration/adversarial.test.ts` (runtime Workers local réel, horloge figée partagée : S1 deux rooms décalées, manche gagnée puis trophée dans A → ligne persistée, alarme et trames de B inchangées, puis B se résout seule sans toucher A ; S2 deux choix verrouillés → aucune trame reçue avant `revealedChoices` ne porte un élément, aucun token ni empreinte jusqu'à la revanche ; AC2 13 commandes à la mauvaise phase refusées sans écriture, publication ni décalage d'alarme ; revanche en double ; choix renvoyé après reprise sur une nouvelle socket (même `requestId`, même altéré) ; réglages périmés et ancienne partie ; token d'une autre room et troisième `join` en pleine partie ; trois alarmes et un choix tardif au même instant ; nul ON en ligne → un trophée chacun, une fois ; AC3 journaux du runtime sans token ni empreinte sur tout le cycle de vie), `tests/e2e/network.spec.ts` (3 navigateurs, build de production servi par workerd : AC1 deux contextes jusqu'au trophée, troisième contexte refusé en pleine partie, revanche jouée jusqu'au second trophée `[1,1]` ; S2 trames reçues des deux parties ; tokens absents des trames reçues, états, URL, DOM, localStorage et console ; AC3 aucun code du harnais dans `dist/`, routes du harnais sans réponse) |
+| PFC-003-S1, S2 (trophées), AC3 | `tests/unit/domain/session.test.ts` ; double dispatch dans `match.test.ts` |
+
+## Definition of Done produit
+Tous les besoins ci-dessus couverts, gates du clone propre verts, recette locale et réseau
+concluante, configuration et rollback documentés, aucun blocage connu laissé implicite.
+Le développement peut être complet avant la publication ; la release production n'est complète
+qu'après déploiement autorisé et smoke réussi. Le kit de cadrage n'est pas une application livrée.
