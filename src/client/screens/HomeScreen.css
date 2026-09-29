@@ -178,7 +178,7 @@
 
 /* Sans mouvement, le raccourci reste pleinement lisible. */
 @media (prefers-reduced-motion: reduce) {
-  .home__hint {
+  :root:not([data-reduced-motion='false']) .home__hint {
     animation: none;
     opacity: 1;
   }

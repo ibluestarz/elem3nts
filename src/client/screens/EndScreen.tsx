@@ -58,10 +58,13 @@ export function EndScreen(props: EndScreenProps) {
     <div className="end screen-enter" data-match-id={matchId}>
       <div className="end__summary">
         <p className="end__label">Fin de partie</p>
-        <h2 className="end__title" id="screen-title" tabIndex={-1} ref={titleRef} data-focus-target>
+        {/* Le titre focalisé (« Victoire ») est complété par le vainqueur à l'annonce (PFC-021). */}
+        <h2 className="end__title" id="screen-title" tabIndex={-1} ref={titleRef} data-focus-target aria-describedby="end-verdict-sub">
           {verdict.title}
         </h2>
-        <p className="end__sub">{verdict.sub}</p>
+        <p className="end__sub" id="end-verdict-sub">
+          {verdict.sub}
+        </p>
         <div className="end__scores" role="group" aria-label="Score final">
           <div className="end__player">
             <span className="end__name">{names[0]}</span>

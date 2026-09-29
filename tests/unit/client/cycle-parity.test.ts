@@ -13,7 +13,7 @@ function advanceUntil(state: GameState, until: (next: GameState) => boolean): { 
   while (!until(current)) {
     if (current.deadline === null) throw new Error(`Aucune échéance en ${current.phase}.`);
     at = current.deadline;
-    current = gameReducer(current, { type: 'tick', now: at, canSelect: true });
+    current = gameReducer(current, { type: 'tick', now: at, hotseat: false });
   }
   return { state: current, at };
 }
@@ -43,7 +43,7 @@ describe('PFC-014 — chronologie D09 partagée entre le cycle local et la room 
   ])('%s : roundResultMs égale la durée locale, de l’échéance de sélection à la phase suivante', (_label, target, draw, choices) => {
     let state = advanceUntil(started(target, draw), (next) => next.phase === 'selecting').state;
     choices.forEach((element, player) => {
-      if (element !== null) state = gameReducer(state, { type: 'choose', player: player as PlayerIndex, element });
+      if (element !== null) state = gameReducer(state, { type: 'choose', player: player as PlayerIndex, element, now: 0 });
     });
     const revealed = advanceUntil(state, (next) => next.phase === 'reveal');
     const { play, match } = revealed.state;

@@ -1,0 +1,164 @@
+/*
+ * Choix d'un élément au toucher (maquette `trinTaps`), communs à l'arène en ligne et au tour par tour local
+ * (PFC-025). Valeurs de la maquette ; ajouts hors maquette (éclat du choix, repli sans 3D) dans la même DA.
+ */
+
+/* Zones à toucher posées sur les éléments 3D pendant la sélection (maquette `trinTaps`). */
+.arena-tap {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgb(233 227 214 / 20%);
+  background: rgb(255 255 255 / 2%);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    opacity 0.3s,
+    border-color 0.2s,
+    box-shadow var(--duration-slow) var(--ease-out-expo);
+  animation: arena-tap-in var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.arena-tap:hover:not([aria-disabled='true']) {
+  border-color: rgb(216 184 120 / 70%);
+}
+
+.arena-tap:active:not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+/* Choix verrouillé : les autres éléments s'effacent (maquette : opacité 0,35), le choix reste marqué. */
+.arena-tap--locked {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Élément choisi : éclat doré bref ; état final identique à la maquette (tous à 0,35). */
+.arena-tap--chosen {
+  animation: arena-tap-chosen var(--duration-slow) var(--ease-out-expo);
+}
+
+.arena-tap__name {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  font: 500 11px/1 var(--font-caps);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  text-shadow: 0 1px 8px #000;
+  white-space: nowrap;
+}
+
+/* Repli sans scène 3D : les mêmes choix en rangée, au-dessus de « Quitter ». */
+.arena-picks {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  animation: arena-picks-in var(--duration-base) var(--ease-out-expo) backwards;
+}
+
+.arena-picks--compact {
+  bottom: calc(19cqh + 44px);
+  gap: 8px;
+}
+
+.arena-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgb(5 8 11 / 55%);
+  backdrop-filter: blur(6px);
+  color: var(--color-ink-strong);
+  font: 500 15px/1 var(--font-body);
+  cursor: pointer;
+  transition:
+    opacity 0.3s,
+    border-color 0.2s,
+    background var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.arena-picks--compact .arena-pick {
+  padding: 0 14px;
+  gap: 8px;
+}
+
+.arena-pick:hover:not([aria-disabled='true']) {
+  border-color: rgb(216 184 120 / 70%);
+}
+
+.arena-pick:active:not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.arena-pick--locked {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.arena-pick--chosen {
+  opacity: 1;
+  border-color: var(--color-gold);
+  background: rgb(216 184 120 / 12%);
+}
+
+.arena-pick__gem {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+}
+
+.arena-pick__gem--fire {
+  background: var(--color-fire);
+}
+
+.arena-pick__gem--water {
+  background: var(--color-water);
+}
+
+.arena-pick__gem--plant {
+  background: var(--color-plant);
+}
+
+.arena-pick__key {
+  min-width: 22px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 600 12px/1 var(--font-body);
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+@keyframes arena-tap-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes arena-tap-chosen {
+  from {
+    opacity: 1;
+    border-color: var(--color-gold);
+    box-shadow:
+      0 0 0 1px rgb(216 184 120 / 45%),
+      0 0 32px rgb(216 184 120 / 40%);
+  }
+}
+
+@keyframes arena-picks-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}

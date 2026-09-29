@@ -28,6 +28,8 @@ aucune commande no-op ni `passWithNoTests` pour donner l'apparence d'un gate ré
 | npm run verify | build → test:functional → lint → test:e2e, arrêt au premier échec | — |
 | npm run baseline:mockup | Outil hors gate : recapture les références visuelles depuis la maquette (réseau requis) | — |
 | npm run port:engine | Outil hors gate : régénère `src/client/scene/engine.js` depuis la maquette (D33) ; un test de dérive échoue si le fichier diffère | — |
+| npm run measure:scene | Outil hors gate (PFC-021, D46) : temps d'image et éclairs de la vraie scène sur le GPU du poste (Chromium avec fenêtre, serveur de développement lancé par le script, sonde `?perf`) | — |
+| npm run measure:load | Outil hors gate (PFC-021, D46) : ouverture à froid et visite suivante sous profil mobile Lighthouse, contre `npm run preview` déjà lancé ; `RUNS=9` pour plus de passages | — |
 | npm run deploy:* | Non créées | PFC-022 / PFC-023 |
 
 Prérequis E2E sur une machine neuve : `npx playwright install chromium firefox webkit`, puis
@@ -221,6 +223,97 @@ Depuis PFC-019 (recette réseau et tests adverses, D44) :
   vrai en sélection ne fuit rien, `projectState` exige aussi `lastRound.roundId === roundId` (défense en profondeur).
 - Limites : les journaux vérifiés sont ceux de workerd en local (le Worker n'écrit aucune console) ; les journaux de la
   plateforme Cloudflare relèvent de PFC-020/022. Pas de test de charge (hors périmètre).
+Depuis PFC-020 (abus et observabilité, D45) :
+- **Adresse cliente** : les limites sont par `CF-Connecting-IP`. Le Worker de test donne une adresse neuve (/64 de
+  documentation) à chaque requête transmise au Worker de production, ou celle qu'impose `x-harness-client-ip`
+  (`CLIENT_IP_HEADER`, `openSocket(…, clientIp)`) ; la copie transmise n'a pas de corps (l'API n'en lit aucun ; un corps
+  transféré puis jamais lu coupait la connexion réutilisée par la requête suivante). En E2E, `isolatedContext` donne à
+  chaque contexte son propre /64 et `playwright.config.ts` une adresse par processus aux fixtures par défaut : sans cela,
+  toute la recette partagerait le budget de 127.0.0.1. Mesuré : l'en-tête atteint aussi l'upgrade WebSocket dans les
+  3 navigateurs (60 ouvertures admises, 61e refusée, autre IP admise).
+- **Journaux** : `structuredLogs(server)` relit les événements de `log.ts` dans les journaux de workerd (forme
+  `util.inspect` en local) ; Workers Logs indexe les mêmes objets en production.
+- **Pures** `tests/integration/rate.test.ts` (Node) : fenêtre glissante (borne exacte à 60 s, refus non comptés,
+  `Retry-After`), clé d'IP (IPv4, IPv4 dans IPv6, IPv6 /64 sous toutes ses écritures, entrées illisibles → `unknown`),
+  allowlist du journal (champs inconnus, `requestId`, token et charge écartés), `errorName`.
+- **Intégration** `tests/integration/abuse.test.ts` (runtime Workers local réel, horloge figée) : S1 10 créations puis
+  429 + `Retry-After: 60`, exactement 10 `room.created`, autre IP et /64 voisin admis ; fenêtre glissante (59,999 s /
+  60 s) ; budget commun create/join, jonction sur code inconnu comptée ; **quota atomique** (20 créations simultanées →
+  10 × 201, 10 × 429, 10 rooms) ; stockage du limiteur effacé par son alarme ; Fetch Metadata (4 cas 403 sans room ni
+  budget consommé ; sans en-têtes admis) ; 60 sockets par IP puis 429 avant toute room ; plafond de 2 sockets en attente
+  (plus ancienne 4408 sans trame, joueurs intacts) ; S2 trames malformées portant un token (en attente et authentifiée)
+  et `requestId` égal au token → `message.rejected INVALID_MESSAGE`, aucun token, empreinte, charge ni code de room dans
+  les journaux ; corrélation `room`/`phase`/`match`/`round`/`revision` ; 1011 et alarme en échec : nom d'erreur seul ;
+  en-têtes de sécurité des réponses JSON.
+- **E2E** `tests/e2e/security.spec.ts` (3 navigateurs, build servi par workerd) : en-têtes de `/`, `/p/:code` (repli
+  SPA), d'un fichier du build et de l'icône ; `/_headers` jamais servi ; scène 3D réelle `ready` sous CSP, aucune
+  violation (`securitypolicyviolation`) ; lobby réel à deux contextes sous CSP (API et socket), aucune violation ni
+  problème ; S1 vu de l'interface (10 créations puis message « Trop de tentatives… », bouton réutilisable, aucune room) ;
+  61e socket refusée (1006) quand une autre IP passe ; site tiers (127.0.0.1, page sans notre CSP) qui poste 12 fois :
+  requêtes parties, 403 ou bloquées par CORP, budget de la victime intact ; aucun secret ni variable dans `dist/`.
+  `network.spec.ts` : `x-harness-client-ip` ajouté aux marqueurs interdits dans le build. Toute la recette tourne
+  désormais sous la CSP de production.
+- Constat : notre propre CSP (`connect-src 'self'`) bloque d'emblée toute requête d'une page servie par ce Worker vers
+  une autre origine ; le test de site tiers sert donc sa page sans elle (`page.route`), comme un vrai site tiers.
+- Outillage sous CSP : la CSP de production refuse aussi les injections des tests. `hideInterface` pose une feuille
+  construite (`adoptedStyleSheets`) au lieu d'une balise `<style>` ; `strongDiffRatio` compare ses captures (`data:`)
+  dans une page vierge du contexte. Jamais `bypassCSP` : la recette doit tourner sous la politique livrée.
+- Mutations contrôlées (restaurées, fichier comparé à sa copie), toutes détectées : attente de 5 ms entre décision et
+  écriture du limiteur → le test du quota atomique échoue ; origine vérifiée après la limite
+  → 4 tests Fetch Metadata (budget consommé) ; allowlist du journal contournée et `requestId` journalisé → allowlist et
+  S2 ; plafond des sockets en attente retiré → test du plafond ; limite `socket` retirée → test des 60 ouvertures ;
+  `connect-src 'none'` dans `_headers` → 4 tests E2E (en-têtes, lobby sous CSP, S1 à l'écran, sockets).
+- Limites : `limiter.unavailable` (limiteur injoignable, requête admise) n'est pas provoqué en test, faute de moyen
+  d'isoler une panne de Durable Object dans workerd sans code de test dans le Worker de production ; comportement lu
+  à la revue. Pas de test de charge ni de protection volumétrique (règles de zone Cloudflare, `docs/RUNBOOK.md`).
+Depuis PFC-021 (accessibilité et performance, D46) :
+- **Audit** `tests/e2e/audit.ts` : `expectAccessible` = axe-core (`@axe-core/playwright`, WCAG 2.2 A/AA + bonnes
+  pratiques, mode « legacy », horloge figée avancée d'1 ms tant que l'analyse tourne) dans les 3 navigateurs, puis
+  contraste **mesuré** sur le rendu Chromium : capture texte masqué (halo conservé), fond réel sous chaque texte, 10e
+  centile, seuils 4,5:1 / 3:1. Firefox et WebKit peignent autrement le texte masqué (dégradé `background-clip: text`) :
+  mesure non fiable, constatée, donc réservée au rendu de référence. Exemptions nommées uniquement (D46).
+- **E2E** `tests/e2e/a11y.spec.ts` (3 navigateurs) : PFC-021-S1 local au clavier seul (chaque contrôle atteint par Tab
+  montre un anneau ≥ 2 px, piège du tiroir depuis le titre, focus rendu au déclencheur, verdict décrit, rejouer puis
+  accueil) et en ligne à deux contextes sans souris (créer, rejoindre par saisie, X au clavier, prêt, choix, rejouer,
+  quitter) ; PFC-021-S2 mouvements réduits (révélation lisible, aucune animation > 1 ms, choix de l'appareil
+  prioritaire et mémorisé) ; sans WebGL + mouvements réduits (partie et revanche) ; contrôles tactiles en ligne à
+  390×844 et 320×568 (cibles ≥ 44 px, choix au toucher, revanche, aucun défilement horizontal) ; audit de 8 écrans
+  locaux (2 tailles) et 8 états en ligne ; reflow 320×568 (WCAG 1.4.10). Firefox sans fenêtre garde le focus sur le
+  dernier contrôle quand Tab quitte la page : les parcours détectent « Tab n'a rien déplacé » et reprennent au titre.
+- **E2E** `tests/e2e/performance.spec.ts` (Chromium) : 20 revanches avec la vraie scène, en basse qualité et 800×450
+  pour borner le rendu logiciel dans le gate parallèle (15 min en 1280×800 haute sous charge, famine des tests à
+  échéance réelle constatée ; ≈ 1,5–3 min ainsi) (tampons, textures, cibles de
+  rendu constants ; programmes et VAO en plateau entre la 10e et la 20e ; écouteurs et nœuds CDP après ramasse-miettes
+  constants ; tas < +2 Mo ; une boucle d'image) ; budgets gzip des bundles et sonde absente du build ; cache
+  `immutable` des fichiers à empreinte, page revalidée. Sous horloge figée, le chien de garde (D33) verrait chaque bond
+  comme une image : 26 vraies images de 16 ms le laissent conclure avant les bonds (sans cela, repli mesuré au bout
+  d'environ 25 bonds).
+- **Unitaires** : `focusTrap.test.tsx` (dialogue monté tardivement, Maj+Tab depuis le titre, retrait), préférences
+  (système suivie, choix prioritaire, anciens enregistrements), `Stage` (Espace = nouvelle session, retour des
+  Réglages, verdict décrit, notification fermée au clavier), `OnlineReconnect` (dialogue de coupure au clavier),
+  `OnlineGame` (20 revanches en ligne : ni écouteur ni minuterie en plus).
+- **Mesures hors gate** : `npm run measure:scene` (GPU réel ; Chromium sans fenêtre retombe sur SwiftShader sous
+  WSL2, mesuré) et `npm run measure:load` (preview lancé). Résultats datés et machine : D46 et ARCHITECTURE « Rendu
+  et qualité ».
+- **Téléphone réel** (sonde de développement, jamais livrée) : `npm run dev -- --host`, ouvrir sur le téléphone
+  `http://<adresse-du-poste>:5173/?perf`, ne plus toucher l'écran ~1 min, puis recopier le panneau (texte
+  sélectionnable ; le presse-papier exige HTTPS). Sous WSL2, exposer le port côté Windows (réseau « mirrored », ou
+  `netsh interface portproxy add v4tov4 listenport=5173 connectaddress=<ip WSL> connectport=5173` et règle de
+  pare-feu), même Wi-Fi.
+- Mutations contrôlées (restaurées, fichier comparé), toutes détectées : `--focus-ring: none` → S1 (anneau) ;
+  `--color-ink-muted` assombri → audit (contraste) ; `Espace` de l'accueil sans nouvelle session → test `Stage` ;
+  piège sans dépendance d'ouverture → `focusTrap` et `OnlineReconnect` ; garde du dialogue retirée → `OnlineReconnect` ;
+  préférence toujours enregistrée → préférences ; écouteur `visibilitychange` jamais retiré → 20 revanches en ligne.
+Depuis PFC-025 (tour par tour sur un seul téléphone, D47) :
+- **Unitaires** : `game.test.ts` (voile sans échéance, seul le joueur du tour choisit, choix de J1 → voile de J2, choix
+  ou échéance de J2 → révélation unique, S1, S2 R11, manche vide, « prêt » répété, mode fixé à l'ouverture de la
+  manche dans les deux sens de redimensionnement) ; `Stage.test.tsx` (voile focalisé, clavier sans effet, choix au
+  toucher, aucune trace du choix de J1 dans le DOM avant la révélation, révélation au choix de J2).
+- **E2E** `tests/e2e/turns.spec.ts` (3 navigateurs, écran tactile 390×844, horloge figée) : S1/AC1–AC2, S2, J2 hors
+  délai, AC3 bureau ↔ téléphone ; `keyboard.spec.ts` : redimensionnement avant l'ouverture de la manche.
+- **Parité visuelle** (maquette, tolérance nulle) : états `turn-gate-p1`, `turn-select-p1` (zones à toucher),
+  `turn-gate-p2`, `turn-gate-p2-late` (`mobileOnly`) ; les états en ligne restent identiques après l'extraction
+  d'`ElementPicks`. **A11y** : voile et tour de J1 audités (axe, contraste), voile utilisable au clavier.
 Pour un ticket purement documentaire : liens, IDs, cohérence et diff suffisent ; ne pas prétendre
 que le build a été exécuté dans un dossier sans application. Pour les tickets code, exécuter les
 gates disponibles, noter précisément ceux que les dépendances ne permettent pas encore.

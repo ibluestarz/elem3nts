@@ -1,6 +1,8 @@
 import { isRoomCode, normalizeRoomCode, type RoomEntry } from '../shared/protocol/index.ts';
 import type { Env } from './env.ts';
 import { jsonError, jsonResponse } from './http.ts';
+import { clientKey, type Bucket } from './rate.ts';
+import { errorName, logEvent } from './log.ts';
 import { generateResumeToken, generateRoomCode, hashResumeToken } from './tokens.ts';
 
 /** Tirages de code avant d'abandonner une création (PROTOCOL : 5 puis erreur réessayable). */
@@ -47,18 +49,66 @@ export async function joinRoom(env: Env, rawCode: string): Promise<Response> {
 }
 
 /**
+ * Gardes de `POST /api/rooms` et `/join`, après la méthode (PFC-020, D45) : requête d'un autre site
+ * refusée (403), **puis** limite de débit `entry` de l'IP (429). Dans cet ordre, un site tiers ne peut
+ * pas consommer le budget du navigateur de sa victime. `null` : la requête peut entrer.
+ */
+export async function guardEntry(request: Request, env: Env): Promise<Response | null> {
+  if (isCrossSite(request)) {
+    logEvent('http.rejected', { code: 'ORIGIN_FORBIDDEN' });
+    return jsonError('ORIGIN_FORBIDDEN');
+  }
+  return rateLimit(request, env, 'entry');
+}
+
+/**
  * `GET /api/rooms/:code/ws` : ouvre la socket d'une room (PFC-013). Gardes, dans l'ordre, avant
  * d'atteindre toute room : méthode GET (405), demande d'upgrade WebSocket (426), Origin identique à
- * celle du Worker (403), code bien formé (404). Aucune donnée n'est lue ni renvoyée avant ; le token
- * n'arrive que dans la première trame, jamais dans l'URL.
+ * celle du Worker (403), code bien formé (404), limite de débit `socket` de l'IP (429, PFC-020). Aucune
+ * donnée n'est lue ni renvoyée avant ; le token n'arrive que dans la première trame, jamais dans l'URL.
  */
-export function connectRoom(request: Request, env: Env, rawCode: string): Promise<Response> | Response {
+export async function connectRoom(request: Request, env: Env, rawCode: string): Promise<Response> {
   if (request.method !== 'GET') return jsonError('SOCKET_METHOD_NOT_ALLOWED');
   if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') return jsonError('UPGRADE_REQUIRED');
-  if (!isAllowedOrigin(request)) return jsonError('ORIGIN_FORBIDDEN');
+  if (!isAllowedOrigin(request)) {
+    logEvent('http.rejected', { code: 'ORIGIN_FORBIDDEN', bucket: 'socket' });
+    return jsonError('ORIGIN_FORBIDDEN');
+  }
   const roomCode = normalizeRoomCode(decodeSegment(rawCode) ?? '');
   if (roomCode === null) return jsonError('ROOM_ABSENT');
+  const refusal = await rateLimit(request, env, 'socket');
+  if (refusal !== null) return refusal;
   return env.ROOMS.getByName(roomCode).fetch(request);
+}
+
+/**
+ * Compte la tentative dans le budget `bucket` de l'IP. Dépassement : `429 RATE_LIMITED` et `Retry-After`,
+ * sans atteindre aucune room. Limiteur indisponible : la requête passe (le jeu reste jouable, la protection
+ * est suspendue le temps de la panne) et la panne est journalisée.
+ */
+async function rateLimit(request: Request, env: Env, bucket: Bucket): Promise<Response | null> {
+  let verdict;
+  try {
+    verdict = await env.LIMITER.getByName(clientKey(request)).take(bucket);
+  } catch (error) {
+    logEvent('limiter.unavailable', { bucket, error: errorName(error) });
+    return null;
+  }
+  if (verdict.ok) return null;
+  logEvent('http.rejected', { code: 'RATE_LIMITED', bucket });
+  return jsonError('RATE_LIMITED', { 'retry-after': String(verdict.retryAfterS) });
+}
+
+/**
+ * Fetch Metadata (PFC-020) : une requête d'un navigateur porte `Origin` et `Sec-Fetch-Site` ; l'une ou
+ * l'autre désignant un autre site suffit à refuser. Leur absence (client hors navigateur, qui pourrait de
+ * toute façon les forger) n'est pas un refus : la limite de débit s'applique alors seule.
+ */
+function isCrossSite(request: Request): boolean {
+  const origin = request.headers.get('origin');
+  if (origin !== null && origin !== new URL(request.url).origin) return true;
+  const site = request.headers.get('sec-fetch-site');
+  return site !== null && site !== 'same-origin';
 }
 
 /**

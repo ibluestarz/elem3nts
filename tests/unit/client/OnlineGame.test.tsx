@@ -336,3 +336,55 @@ describe('PFC-016 — quitter', () => {
     expect(screen.getByRole('button', { name: 'Jouer en ligne' })).toBeInTheDocument();
   });
 });
+
+describe('PFC-021-AC3 — 20 revanches en ligne', () => {
+  it('ni écouteur, ni minuterie en plus d’une revanche à l’autre (même socket)', async () => {
+    // Espions transparents : chaque appel est compté avec sa cible (`mock.contexts`), puis exécuté.
+    const addSpy = vi.spyOn(EventTarget.prototype, 'addEventListener');
+    const removeSpy = vi.spyOn(EventTarget.prototype, 'removeEventListener');
+    const onGlobal = (contexts: readonly unknown[]) => contexts.filter((target) => target === window || target === document).length;
+    // Écouteurs du document et de la fenêtre (clavier, visibilité, réseau) : ceux qu'une fuite ferait croître.
+    const globalListeners = () => onGlobal(addSpy.mock.contexts) - onGlobal(removeSpy.mock.contexts);
+    try {
+      await joined(0);
+      const counts: { listeners: number; timers: number }[] = [];
+      const answered = new Set<string>();
+      for (let game = 1; game <= 20; game++) {
+        const id = `m-${String(100 + game)}`;
+        send(0, { phase: 'starting', settings: X1, match: startMatch(id, X1), roundId: 1, deadline: serverNow() + 2_200 });
+        send(0, { phase: 'selecting', settings: X1, match: startMatch(id, X1), roundId: 1, deadline: serverNow() + CYCLE_MS.selection });
+        key('KeyA', 'q');
+        const play = playRound(startMatch(id, X1), ['fire', 'plant']);
+        send(0, {
+          phase: 'match-ended',
+          settings: X1,
+          match: play.match,
+          roundId: 1,
+          lastRound: { roundId: 1, choices: ['fire', 'plant'], resolution: play.round },
+          trophies: [game, 0],
+        });
+        expect(screen.getByRole('heading', { name: 'Victoire' })).toBeInTheDocument();
+        key('Space', ' ');
+        // Durée réelle d'une partie : les minuteries échues partent, le lien reste vivant (pongs).
+        for (let second = 0; second < 10; second++) {
+          act(() => {
+            vi.advanceTimersByTime(1000);
+            for (const frame of socket.sent) {
+              const id = String(frame['requestId']);
+              if (frame['type'] !== 'ping' || answered.has(id)) continue;
+              answered.add(id);
+              socket.receive(encodeServerMessage(pongMessage(id, Math.round(serverNow()))));
+            }
+          });
+        }
+        counts.push({ listeners: globalListeners(), timers: vi.getTimerCount() });
+      }
+      expect(socket.sent.filter((frame) => frame['type'] === 'rematch-ready')).toHaveLength(20);
+      expect(FakeSocket.instances).toHaveLength(1);
+      expect(counts.at(-1)).toEqual(counts[1]);
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
+});

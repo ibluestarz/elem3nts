@@ -47,13 +47,17 @@ export {
 export { authorizeCommand, type Authorization } from './policy.ts';
 export {
   AUTH_TIMEOUT_MS,
+  ENTRY_RATE_LIMIT,
   MAX_CONSECUTIVE_VIOLATIONS,
+  MAX_PENDING_SOCKETS,
   MESSAGES_PER_SECOND,
   MESSAGE_BURST,
+  RATE_WINDOW_MS,
   RECONNECT_TIMEOUT_MS,
   ROOM_IDLE_TIMEOUT_MS,
   ROOM_MAX_DURATION_MS,
   SOCKET_CLOSE_CODES,
+  SOCKET_RATE_LIMIT,
   roomSocketPath,
   type SocketCloseCode,
 } from './socket.ts';

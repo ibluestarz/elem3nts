@@ -109,15 +109,16 @@ export function ConnectionLost({ kind, opponent, deadline, onRetry, onQuit }: Co
   const retryRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const subId = useId();
-  useFocusTrap(dialogRef);
-
   const open = shown !== null;
+  useFocusTrap(dialogRef, open);
   useEffect(() => {
     if (!open) return undefined;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     retryRef.current?.focus();
     return () => {
-      if (previous?.isConnected) previous.focus();
+      // Origine disparue entre-temps (zone de choix d'une phase finie) : titre de l'écran plutôt que <body>.
+      const back = previous?.isConnected ? previous : document.querySelector<HTMLElement>('[data-focus-target]');
+      back?.focus({ preventScroll: true });
     };
   }, [open]);
 

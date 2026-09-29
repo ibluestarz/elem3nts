@@ -6,7 +6,10 @@ import type { Engine } from './engine.js';
 
 /** Projection de l'état du jeu pour la scène : verrous seulement, choix après révélation. */
 export function sceneViewOf(screen: SceneScreen, game: GameState): SceneView {
-  const { match, play, phase } = game;
+  const { match, play } = game;
+  // Tour par tour : le voile masque la scène, pour qui la manche reste en sélection (verrou de Joueur 1 conservé
+  // jusqu'au tour de Joueur 2, aucune remise à zéro entre les deux tours).
+  const phase = game.phase === 'gate' ? 'selecting' : game.phase;
   const revealedPhase = phase === 'reveal' || phase === 'clash' || phase === 'result';
   const result = match?.result;
   return {

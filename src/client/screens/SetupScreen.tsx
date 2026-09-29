@@ -20,16 +20,21 @@ interface SetupScreenProps {
   readonly onEditKeys: () => void;
   readonly onStart: () => void;
   readonly focusInput: number;
+  /** Focus à l'ouverture : le titre, ou « Modifier les touches » au retour des réglages. */
+  readonly initialFocus?: 'title' | 'keys';
 }
 
 /** Préparation d'une partie locale (maquette `isSetup`). */
 export function SetupScreen(props: SetupScreenProps) {
-  const { compact, error, keyLabels, onBack, onEditKeys, onStart, focusInput } = props;
+  const { compact, error, keyLabels, onBack, onEditKeys, onStart, focusInput, initialFocus = 'title' } = props;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const keysRef = useRef<HTMLButtonElement>(null);
 
+  // Montage seulement : l'origine du retour est lue une fois, comme le titre des autres écrans.
+  const firstFocus = useRef(initialFocus);
   useEffect(() => {
-    titleRef.current?.focus();
+    (firstFocus.current === 'keys' ? (keysRef.current ?? titleRef.current) : titleRef.current)?.focus();
   }, []);
 
   // Une tentative de lancement invalide ramène le focus sur la saisie fautive.
@@ -77,7 +82,7 @@ export function SetupScreen(props: SetupScreenProps) {
                 </div>
               ))}
             </div>
-            <button type="button" className="link-button" onClick={onEditKeys}>
+            <button type="button" className="link-button" ref={keysRef} onClick={onEditKeys}>
               Modifier les touches
             </button>
           </>

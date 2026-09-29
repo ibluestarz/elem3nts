@@ -34,6 +34,24 @@ export const MESSAGE_BURST = 30;
 export const MAX_CONSECUTIVE_VIOLATIONS = 3;
 
 /**
+ * Sockets non authentifiées tenues au plus par une room (PFC-020, D45). Une ouverture de plus ferme la
+ * plus ancienne en attente (4408) ; les sockets authentifiées des joueurs ne sont jamais comptées ici.
+ */
+export const MAX_PENDING_SOCKETS = 2;
+
+/** Fenêtre glissante des limites par IP (PFC-020, D45). */
+export const RATE_WINDOW_MS = 60_000;
+
+/** Créations et jonctions (`POST /api/rooms`, `/join`) admises par IP sur la fenêtre, budget commun (PROTOCOL). */
+export const ENTRY_RATE_LIMIT = 10;
+
+/**
+ * Ouvertures de socket admises par IP sur la fenêtre : une coupure de 30 s coûte au plus une dizaine de
+ * tentatives (délais 0, 1, 2 puis 4 s), deux joueurs peuvent partager une IP, et un rechargement en ajoute.
+ */
+export const SOCKET_RATE_LIMIT = 60;
+
+/**
  * Codes de fermeture applicatifs (plage 4000–4999, RFC 6455 § 7.4.2), fixes et sans donnée de room :
  * le client décide de sa réaction sur le seul code.
  */

@@ -5,10 +5,11 @@ import { parseRoomEntry, type RoomEntry } from '../../shared/protocol/index.ts';
  * - `ROOM_UNAVAILABLE` : code inconnu, expiré ou fermé (404), ou room illisible (503) ;
  * - `ROOM_FULL` : les deux places sont prises (409) ;
  * - `CODE_COLLISION` : création impossible pour l'instant, réessayable (503) ;
+ * - `RATE_LIMITED` : trop de créations ou jonctions depuis cette adresse, réessayable après une minute (429, PFC-020) ;
  * - `network` : aucune réponse (hors ligne, serveur injoignable, délai dépassé) ;
  * - `server` : toute autre réponse inattendue, y compris une réponse de succès mal formée.
  */
-export type EntryFailure = 'ROOM_UNAVAILABLE' | 'ROOM_FULL' | 'CODE_COLLISION' | 'network' | 'server';
+export type EntryFailure = 'ROOM_UNAVAILABLE' | 'ROOM_FULL' | 'CODE_COLLISION' | 'RATE_LIMITED' | 'network' | 'server';
 
 export type EntryResult =
   | { readonly ok: true; readonly entry: RoomEntry }
@@ -18,7 +19,7 @@ export type EntryResult =
 /** Au-delà, la requête est abandonnée et signalée comme un problème réseau. */
 export const ENTRY_TIMEOUT_MS = 10_000;
 
-const KNOWN_CODES: readonly EntryFailure[] = ['ROOM_UNAVAILABLE', 'ROOM_FULL', 'CODE_COLLISION'];
+const KNOWN_CODES: readonly EntryFailure[] = ['ROOM_UNAVAILABLE', 'ROOM_FULL', 'CODE_COLLISION', 'RATE_LIMITED'];
 
 /** Crée une room et réserve la place de Joueur 1 (`POST /api/rooms`). */
 export function createRoom(signal: AbortSignal): Promise<EntryResult> {

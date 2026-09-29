@@ -154,16 +154,27 @@ export function OnlineScreen(props: OnlineScreenProps) {
     if (view !== 'join') titleRef.current?.focus();
   }, [view]);
 
+  // Coupure (PFC-017) : son propre lien en reprise, quel que soit l'écran de la room ; ou, dans l'arène,
+  // la partie mise en pause par l'absence de l'adversaire, avec l'échéance de reconnexion publiée.
+  const lostKind: LostKind | null =
+    flow.step === 'room' && room.link === 'reconnecting'
+      ? 'self'
+      : view === 'arena' && state?.phase === 'paused'
+        ? 'opponent'
+        : null;
+
   // Espace confirme (lobby, revanche), sauf sur un contrôle qui a sa propre action ; Échap revient en
   // arrière (panneau) ou quitte la room (partie, fin de partie).
-  const keys = useRef({ view, ready: room.ready, rematch: room.rematch, back: room.back, quit: room.quit });
+  const keys = useRef({ view, lost: lostKind !== null, ready: room.ready, rematch: room.rematch, back: room.back, quit: room.quit });
   useEffect(() => {
-    keys.current = { view, ready: room.ready, rematch: room.rematch, back: room.back, quit: room.quit };
+    keys.current = { view, lost: lostKind !== null, ready: room.ready, rematch: room.rematch, back: room.back, quit: room.quit };
   });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
       const current = keys.current;
+      // Dialogue de coupure ouvert : ni Espace ni Échap n'agissent derrière lui ; seuls ses boutons (PFC-021).
+      if (current.lost) return;
       const isSpace = event.code === 'Space' || event.key === ' ';
       if (isSpace && !ownsKey(event.target)) {
         if (current.view === 'lobby') {
@@ -202,14 +213,6 @@ export function OnlineScreen(props: OnlineScreenProps) {
   );
   useLocalKeys({ enabled: view === 'arena', accepting, bindings: ownKeys, onChoose, onLearn });
 
-  // Coupure (PFC-017) : son propre lien en reprise, quel que soit l'écran de la room ; ou, dans l'arène,
-  // la partie mise en pause par l'absence de l'adversaire, avec l'échéance de reconnexion publiée.
-  const lostKind: LostKind | null =
-    flow.step === 'room' && room.link === 'reconnecting'
-      ? 'self'
-      : view === 'arena' && state?.phase === 'paused'
-        ? 'opponent'
-        : null;
   const lost = (
     <ConnectionLost
       kind={lostKind}

@@ -35,6 +35,13 @@ export function ArenaFrame({ compact, model, onQuit, desktopExtras, compactExtra
     titleRef.current?.focus();
   }, []);
 
+  // Un contrôle focalisé qui disparaît avec sa phase (zones de choix en ligne, dialogue de coupure) rend le
+  // focus au <body> : il revient au titre de l'arène, point de départ de la navigation clavier (PFC-021).
+  useEffect(() => {
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) titleRef.current?.focus({ preventScroll: true });
+  }, [phase]);
+
   const delta = (player: 0 | 1, className: string) => {
     const label = deltas ? deltaLabel(deltas[player]) : '';
     const tone = label === '+1' ? ' is-gain' : label === '−1' ? ' is-loss' : '';

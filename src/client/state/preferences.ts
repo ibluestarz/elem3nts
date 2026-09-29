@@ -18,17 +18,32 @@ export interface Preferences {
   readonly drawEnabled: boolean;
   /** Qualité de la scène 3D, appliquée par PFC-008. */
   readonly quality: Quality;
+  /**
+   * Mouvements réduits effectifs : le choix explicite de l'utilisateur s'il existe, sinon la préférence
+   * système, suivie en direct (D29, PFC-021). Seul un choix explicite est mémorisé.
+   */
   readonly reducedMotion: boolean;
 }
 
 export const STORAGE_KEY = 'elem3nts.prefs.v1';
 
-function systemPrefersReducedMotion(): boolean {
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+/** Une seule liste de requête : l'écouteur `change` doit être retiré de l'objet même où il a été posé. */
+let motionQuery: MediaQueryList | null | undefined;
+
+function reducedMotionQuery(): MediaQueryList | null {
+  if (motionQuery !== undefined) return motionQuery;
   try {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
   } catch {
-    return false;
+    motionQuery = null;
   }
+  return motionQuery;
+}
+
+function systemPrefersReducedMotion(): boolean {
+  return reducedMotionQuery()?.matches ?? false;
 }
 
 export function defaultPreferences(): Preferences {
@@ -44,15 +59,24 @@ export function defaultPreferences(): Preferences {
 
 /** Relit des préférences stockées ; toute valeur invalide revient à son défaut, champ par champ. */
 export function parsePreferences(raw: string | null): Preferences {
+  return parseStored(raw).preferences;
+}
+
+/**
+ * `reducedMotion` booléen = choix explicite (y compris les enregistrements antérieurs à PFC-021, qui le
+ * mémorisaient toujours : leur comportement est conservé) ; absent ou `null` = préférence système.
+ */
+function parseStored(raw: string | null): { readonly preferences: Preferences; readonly explicitReducedMotion: boolean } {
   const defaults = defaultPreferences();
-  if (raw === null) return defaults;
+  const fallback = { preferences: defaults, explicitReducedMotion: false };
+  if (raw === null) return fallback;
   let data: unknown;
   try {
     data = JSON.parse(raw);
   } catch {
-    return defaults;
+    return fallback;
   }
-  if (typeof data !== 'object' || data === null) return defaults;
+  if (typeof data !== 'object' || data === null) return fallback;
   const record = data as Record<string, unknown>;
   const labels = record['learnedLabels'];
   const learnedLabels: Record<string, string> = {};
@@ -63,7 +87,9 @@ export function parsePreferences(raw: string | null): Preferences {
   }
   const quality = record['quality'];
   const displayLayout = record['displayLayout'];
-  return Object.freeze({
+  const reducedMotion = record['reducedMotion'];
+  const explicitReducedMotion = typeof reducedMotion === 'boolean';
+  const preferences: Preferences = Object.freeze({
     bindings: parseBindings(record['bindings']) ?? defaults.bindings,
     learnedLabels: Object.freeze(learnedLabels),
     displayLayout: DISPLAY_LAYOUTS.includes(displayLayout as DisplayLayout)
@@ -71,13 +97,19 @@ export function parsePreferences(raw: string | null): Preferences {
       : defaults.displayLayout,
     drawEnabled: typeof record['drawEnabled'] === 'boolean' ? record['drawEnabled'] : defaults.drawEnabled,
     quality: QUALITIES.includes(quality as Quality) ? (quality as Quality) : defaults.quality,
-    reducedMotion: typeof record['reducedMotion'] === 'boolean' ? record['reducedMotion'] : defaults.reducedMotion,
+    reducedMotion: explicitReducedMotion ? reducedMotion : defaults.reducedMotion,
   });
+  return { preferences, explicitReducedMotion };
 }
+
+/** Vrai dès que l'utilisateur a choisi « Mouvements réduits » ; sinon la préférence système fait foi. */
+let explicitReducedMotion = false;
 
 function read(): Preferences {
   try {
-    return parsePreferences(window.localStorage.getItem(STORAGE_KEY));
+    const stored = parseStored(window.localStorage.getItem(STORAGE_KEY));
+    explicitReducedMotion = stored.explicitReducedMotion;
+    return stored.preferences;
   } catch {
     return defaultPreferences();
   }
@@ -85,7 +117,8 @@ function read(): Preferences {
 
 function write(preferences: Preferences): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    const stored = { ...preferences, reducedMotion: explicitReducedMotion ? preferences.reducedMotion : null };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   } catch {
     // Stockage indisponible (navigation privée, quota) : les préférences restent valables pour la visite.
   }
@@ -99,15 +132,38 @@ function snapshot(): Preferences {
   return current;
 }
 
-export function updatePreferences(patch: Partial<Preferences>): void {
-  current = Object.freeze({ ...snapshot(), ...patch });
-  write(current);
+function notify(): void {
   for (const listener of listeners) listener();
 }
 
+/** Préférences effectives au premier rendu (attribut `data-reduced-motion` posé avant l'écran d'ouverture). */
+export function readPreferences(): Preferences {
+  return snapshot();
+}
+
+export function updatePreferences(patch: Partial<Preferences>): void {
+  const base = snapshot();
+  // Seul un changement réel est un choix : réenregistrer les autres réglages ne fige pas la valeur système.
+  if (patch.reducedMotion !== undefined && patch.reducedMotion !== base.reducedMotion) explicitReducedMotion = true;
+  current = Object.freeze({ ...base, ...patch });
+  write(current);
+  notify();
+}
+
+/** Tant qu'aucun choix explicite n'existe, la préférence système est suivie pendant la visite. */
+function onSystemReducedMotion(event: MediaQueryListEvent): void {
+  if (explicitReducedMotion || snapshot().reducedMotion === event.matches) return;
+  current = Object.freeze({ ...snapshot(), reducedMotion: event.matches });
+  notify();
+}
+
 function subscribe(listener: () => void): () => void {
+  if (listeners.size === 0) reducedMotionQuery()?.addEventListener('change', onSystemReducedMotion);
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) reducedMotionQuery()?.removeEventListener('change', onSystemReducedMotion);
+  };
 }
 
 export function usePreferences(): Preferences {

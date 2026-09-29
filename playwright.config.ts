@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { DETERMINISTIC_CHROMIUM_ARGS } from './tests/e2e/support.ts';
+import { DETERMINISTIC_CHROMIUM_ARGS, testClientIp } from './tests/e2e/support.ts';
 
 const PORT = 4173;
 /** Parité visuelle : référence Chromium uniquement (voir tests/e2e/visual.spec.ts). */
@@ -17,6 +17,9 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${String(PORT)}`,
     locale: 'fr-FR',
+    // Contextes par défaut (`page`, `request`) : une adresse cliente par processus, jamais le budget commun de
+    // 127.0.0.1 (limites par IP, PFC-020) ; les contextes multijoueurs prennent la leur (`isolatedContext`).
+    extraHTTPHeaders: { 'cf-connecting-ip': testClientIp() },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -55,3 +55,32 @@ export const SUDDEN_BANNER: Banner = {
 
 /** Variation affichée d'une manche : `+1`, `−1` (signe moins typographique) ou `±0`. */
 export const deltaLabel = (delta: number): '+1' | '−1' | '±0' => (delta > 0 ? '+1' : delta < 0 ? '−1' : '±0');
+
+/** Voile du tour par tour sur un seul téléphone (maquette `gate*`, PFC-025). */
+export interface TurnGateCopy {
+  readonly label: string;
+  readonly title: string;
+  readonly sub: string;
+  readonly button: string;
+}
+
+/** Textes du voile de `player` à la manche `round` ; `firstLocked` : Joueur 1 a choisi à temps. */
+export function turnGateCopy(round: number, player: 0 | 1, firstLocked: boolean): TurnGateCopy {
+  const label = `Manche ${String(round)} · tour par tour`;
+  if (player === 0) {
+    return {
+      label,
+      title: `${PLAYER_NAMES[0]}, à vous`,
+      sub: `${PLAYER_NAMES[1]} détourne les yeux. Vous aurez 5 secondes pour toucher un élément.`,
+      button: 'Je suis prêt',
+    };
+  }
+  return {
+    label,
+    title: `Passez le téléphone à ${PLAYER_NAMES[1]}`,
+    sub: firstLocked
+      ? `Le choix de ${PLAYER_NAMES[0]} est verrouillé et caché. ${PLAYER_NAMES[1]} aura 5 secondes.`
+      : `${PLAYER_NAMES[0]} n’a pas choisi à temps. ${PLAYER_NAMES[1]} aura 5 secondes.`,
+    button: `${PLAYER_NAMES[1]} — je suis prêt`,
+  };
+}

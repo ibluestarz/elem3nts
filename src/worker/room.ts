@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { PlayerIndex } from '../domain/index.ts';
 import {
   AUTH_TIMEOUT_MS,
+  MAX_PENDING_SOCKETS,
   SOCKET_CLOSE_CODES,
   ackMessage,
   authorizeCommand,
@@ -32,6 +33,7 @@ import {
   type ReplayableCommand,
 } from './game.ts';
 import { jsonError } from './http.ts';
+import { errorName, logEvent, type LogEvent, type LogFields } from './log.ts';
 import { nextReservationDeadline, openRoom, reserveGuest, settleReservations } from './reservations.ts';
 import { claimSeat, findSeat, leaveSeat } from './seats.ts';
 import { RETIRED, freshBudget, spend, type Budget, type Connection } from './sockets.ts';
@@ -54,6 +56,8 @@ const INTERNAL_ERROR_CLOSE = 1011;
 /** Socket acceptée par cette instance : son identité, son budget et sa file de trames. */
 interface Link {
   connection: Connection;
+  /** Instant d'acceptation, pour la durée journalisée à la fermeture. */
+  readonly openedAt: number;
   readonly budget: Budget;
   /** Trames traitées une à une, dans l'ordre d'arrivée, même quand l'une attend (empreinte du token). */
   queue: Promise<void>;
@@ -91,6 +95,11 @@ interface Link {
  * (30 min sans activité utile) et de durée maximale (4 h depuis sa création, pause comprise), sous la même
  * alarme : une instance perdue sans client de retour est donc toujours réveillée puis fermée. Même
  * fermeture que le délai de reconnexion, avec son motif (`inactive`, `max-duration`) ; aucun trophée.
+ *
+ * Abus et observabilité (PFC-020, D45) : au plus `MAX_PENDING_SOCKETS` sockets non authentifiées ; une
+ * ouverture de plus ferme la plus ancienne en attente (4408), jamais la socket d'un joueur. Chaque événement
+ * utile est journalisé (`log.ts`) avec l'identifiant technique de l'objet, la partie, la manche et la
+ * révision : jamais le code, un token, une empreinte, un `requestId` ni le contenu d'une trame.
  */
 export class Room extends DurableObject<Env> {
   readonly #store: RoomStore;
@@ -138,6 +147,7 @@ export class Room extends DurableObject<Env> {
   async create(roomCode: string, hostTokenHash: string): Promise<CreateOutcome> {
     if (this.#unavailable || this.#state !== null) return { kind: 'collision' };
     this.commit(openRoom(roomCode, hostTokenHash, this.now()));
+    this.#log('room.created', { slot: 0 });
     await this.#scheduleAlarm();
     return { kind: 'created' };
   }
@@ -157,7 +167,10 @@ export class Room extends DurableObject<Env> {
       return { kind: 'absent' };
     }
     const reservation = reserveGuest(room, guestTokenHash, now);
-    if (reservation.kind === 'reserved') this.commit(reservation.room);
+    if (reservation.kind === 'reserved') {
+      this.commit(reservation.room);
+      this.#log('seat.reserved', { slot: 1 });
+    }
     if (settled === 'changed' || reservation.kind === 'reserved') await this.#scheduleAlarm();
     return reservation.kind === 'reserved' ? { kind: 'reserved' } : reservation;
   }
@@ -168,6 +181,16 @@ export class Room extends DurableObject<Env> {
    * n'est publié et le runtime relance l'alarme.
    */
   override async alarm(): Promise<void> {
+    try {
+      await this.#wake();
+    } catch (error) {
+      // Rien n'a été publié ; le runtime relance l'alarme. Signalé pour l'exploitation.
+      this.#log('alarm.failed', { error: errorName(error) });
+      throw error;
+    }
+  }
+
+  async #wake(): Promise<void> {
     const now = this.now();
     for (const [ws, link] of this.#links) {
       if (link.connection.kind === 'pending' && link.connection.authDeadline <= now) {
@@ -194,12 +217,15 @@ export class Room extends DurableObject<Env> {
     const { 0: client, 1: server } = new WebSocketPair();
     server.accept();
     if (this.#openRoom() === null) {
+      this.#log('socket.refused', { code: 'ROOM_UNAVAILABLE', close: SOCKET_CLOSE_CODES.ROOM_UNAVAILABLE });
       this.#send(server, errorMessage('ROOM_UNAVAILABLE'));
       server.close(SOCKET_CLOSE_CODES.ROOM_UNAVAILABLE);
       return new Response(null, { status: 101, webSocket: client });
     }
+    this.#makeRoomForPending();
     const link: Link = {
       connection: { kind: 'pending', authDeadline: now + AUTH_TIMEOUT_MS },
+      openedAt: now,
       budget: freshBudget(now),
       queue: Promise.resolve(),
     };
@@ -213,7 +239,11 @@ export class Room extends DurableObject<Env> {
     const closed = (): void => {
       link.queue = link.queue.then(() => this.#disconnect(server));
     };
-    server.addEventListener('close', closed);
+    server.addEventListener('close', (event) => {
+      // Une socket retirée par la room a déjà été journalisée à sa fermeture.
+      if (link.connection.kind !== 'retired') this.#logClosed(link, event.code, 'client');
+      closed();
+    });
     server.addEventListener('error', closed);
     await this.#scheduleAlarm();
     return new Response(null, { status: 101, webSocket: client });
@@ -259,7 +289,8 @@ export class Room extends DurableObject<Env> {
           : null;
       if (link.connection !== connection) return;
       await this.#dispatch(ws, command, connection.kind === 'player' ? connection.slot : null, tokenHash, now);
-    } catch {
+    } catch (error) {
+      this.#log('socket.internal', { close: INTERNAL_ERROR_CLOSE, error: errorName(error) });
       this.#retire(ws, INTERNAL_ERROR_CLOSE);
     }
   }
@@ -337,6 +368,7 @@ export class Room extends DurableObject<Env> {
       return 'unchanged';
     }
     const committed = this.commit(withReply(next, slot, command.requestId));
+    this.#log('command.applied', { slot, command: command.type });
     this.#publish(now);
     this.#send(ws, ackMessage(command.requestId, committed.revision));
     return 'changed';
@@ -350,6 +382,7 @@ export class Room extends DurableObject<Env> {
    */
   #close(ws: WebSocket, room: PersistedRoom, slot: PlayerIndex, requestId: string): void {
     const closed = this.commit(withReply(closeRoom(room), slot, requestId));
+    this.#log('room.closed', { slot, reason: 'left' });
     const players = [...this.#links].filter(([, { connection }]) => connection.kind === 'player');
     for (const [other] of players) this.#send(other, roomClosedMessage('left'));
     this.#send(ws, ackMessage(requestId, closed.revision));
@@ -378,6 +411,7 @@ export class Room extends DurableObject<Env> {
       }
     }
     link.connection = { kind: 'player', slot };
+    this.#log('socket.authenticated', { slot });
     // Présence changée : les deux places reçoivent l'état ; sinon seule la nouvelle socket.
     if (claimed === null) this.#sendState(ws, slot, now);
     else this.#publish(now);
@@ -397,8 +431,9 @@ export class Room extends DurableObject<Env> {
     try {
       if (this.#settle(this.now()) === 'closed') await this.#erase();
       else await this.#scheduleAlarm();
-    } catch {
+    } catch (error) {
       // Rien n'est publié d'une transition non persistée ; l'alarme en cours reste planifiée.
+      this.#log('socket.internal', { error: errorName(error) });
     }
   }
 
@@ -416,19 +451,39 @@ export class Room extends DurableObject<Env> {
 
   /** Refus d'une trame : erreur seule pour une socket authentifiée ; avant authentification, erreur puis fermeture. */
   #reject(ws: WebSocket, kind: 'pending' | 'player', code: ErrorCode, requestId?: string): void {
-    if (kind === 'pending') this.#refuse(ws, code, SOCKET_CLOSE_CODES.UNAUTHORIZED, requestId);
-    else this.#send(ws, errorMessage(code, requestId));
+    if (kind === 'pending') {
+      this.#refuse(ws, code, SOCKET_CLOSE_CODES.UNAUTHORIZED, requestId);
+      return;
+    }
+    const connection = this.#links.get(ws)?.connection;
+    this.#log('message.rejected', { code, ...(connection?.kind === 'player' ? { slot: connection.slot } : {}) });
+    this.#send(ws, errorMessage(code, requestId));
   }
 
   /** Erreur à message fixe, puis fermeture : la socket est retirée avant tout autre événement. */
   #refuse(ws: WebSocket, code: ErrorCode, close: SocketCloseCode, requestId?: string): void {
+    this.#log('message.rejected', { code });
     this.#send(ws, errorMessage(code, requestId));
     this.#retire(ws, close);
+  }
+
+  /**
+   * Plafond des sockets en attente : tant qu'il est atteint, la plus ancienne (ordre d'insertion) est fermée
+   * en 4408, comme une authentification trop tardive, que le client sait rouvrir. Un porteur du code ne peut
+   * donc pas occuper la room à coups d'ouvertures muettes ; les sockets des joueurs ne sont pas concernées.
+   */
+  #makeRoomForPending(): void {
+    const pending = [...this.#links].filter(([, { connection }]) => connection.kind === 'pending');
+    for (const [ws] of pending.slice(0, Math.max(0, pending.length - MAX_PENDING_SOCKETS + 1))) {
+      this.#log('socket.evicted', { close: SOCKET_CLOSE_CODES.AUTH_TIMEOUT });
+      this.#retire(ws, SOCKET_CLOSE_CODES.AUTH_TIMEOUT);
+    }
   }
 
   /** Retire la socket (ses trames suivantes sont ignorées) puis la ferme avec `code`. */
   #retire(ws: WebSocket, code: number): void {
     const link = this.#links.get(ws);
+    if (link !== undefined && link.connection.kind !== 'retired') this.#logClosed(link, code, 'server');
     if (link !== undefined) link.connection = RETIRED;
     try {
       ws.close(code);
@@ -471,25 +526,29 @@ export class Room extends DurableObject<Env> {
     }
     const settlement = settleReservations(room, now);
     if (settlement.kind === 'closed') {
+      this.#log('room.closed', { reason: 'host-absent' });
       this.#state = null;
       return 'closed';
     }
-    /** Persiste puis publie une transition ; vrai si la room a changé. */
-    const apply = (next: PersistedRoom | null): boolean => {
+    /** Persiste, journalise puis publie une transition ; vrai si la room a changé. */
+    const apply = (next: PersistedRoom | null, event: LogEvent, fields: LogFields = {}): boolean => {
       if (next === null) return false;
       this.commit(next);
+      this.#log(event, fields);
       this.#publish(now);
       return true;
     };
-    let changed = apply(settlement.kind === 'released' ? settlement.room : null);
+    let changed = apply(settlement.kind === 'released' ? settlement.room : null, 'seat.released', { slot: 1 });
     const closure = dueClosure(this.#current(), now);
     if (closure !== null) {
       this.#terminate(closeRoom(this.#current()), closure);
       return 'closed';
     }
-    changed = apply(advanceGame(this.#current(), now)) || changed;
+    changed = apply(advanceGame(this.#current(), now), 'room.advanced') || changed;
     for (const slot of [0, 1] as const) {
-      if (this.#current().connected[slot] && !this.#hasPlayer(slot)) changed = apply(leaveSeat(this.#current(), slot, now)) || changed;
+      if (this.#current().connected[slot] && !this.#hasPlayer(slot)) {
+        changed = apply(leaveSeat(this.#current(), slot, now), 'seat.absent', { slot }) || changed;
+      }
     }
     return changed ? 'changed' : 'unchanged';
   }
@@ -516,6 +575,7 @@ export class Room extends DurableObject<Env> {
    */
   #terminate(closed: PersistedRoom, reason: CloseReason): void {
     this.commit(closed);
+    this.#log('room.closed', { reason });
     for (const [ws, { connection }] of this.#links) {
       if (connection.kind !== 'player') continue;
       this.#send(ws, roomClosedMessage(reason));
@@ -556,6 +616,27 @@ export class Room extends DurableObject<Env> {
     }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+  }
+
+  /** Journalise `event` avec l'identifiant technique de la room et, s'il existe, son état courant. */
+  #log(event: LogEvent, fields: LogFields = {}): void {
+    const room = this.#state;
+    logEvent(event, {
+      room: this.ctx.id.toString(),
+      ...(room === null ? {} : { phase: room.phase, match: room.match?.id ?? null, round: room.roundId, revision: room.revision }),
+      ...fields,
+    });
+  }
+
+  /** Fermeture d'une socket : code, auteur, place éventuelle et durée depuis l'acceptation. */
+  #logClosed(link: Link, close: number, by: 'server' | 'client'): void {
+    const { connection } = link;
+    this.#log('socket.closed', {
+      close,
+      by,
+      durationMs: Math.max(0, this.now() - link.openedAt),
+      ...(connection.kind === 'player' ? { slot: connection.slot } : {}),
+    });
   }
 
   #assertAvailable(): void {

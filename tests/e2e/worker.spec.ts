@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { parseRoomEntry } from '../../src/shared/protocol/index.ts';
-import { stubScene, trackProblems } from './support.ts';
+import { isolatedContext, stubScene, trackProblems } from './support.ts';
 
 /**
  * Worker local réel (PFC-011) : `vite preview` exécute le Worker construit dans workerd, avec les
@@ -77,7 +77,7 @@ test.describe('PFC-012 — création et réservation des rooms privées (build s
   test('PFC-012-S1 — J1 crée, un invité dans un autre contexte rejoint : J2 et token distinct ; un troisième est refusé', async ({
     browser,
   }) => {
-    const contexts = await Promise.all([browser.newContext(), browser.newContext(), browser.newContext()]);
+    const contexts = await Promise.all([isolatedContext(browser), isolatedContext(browser), isolatedContext(browser)]);
     const [hostPage, guestPage, thirdPage] = await Promise.all(contexts.map((context) => context.newPage()));
     if (hostPage === undefined || guestPage === undefined || thirdPage === undefined) throw new Error('Pages absentes.');
     for (const page of [hostPage, guestPage, thirdPage]) {
@@ -169,7 +169,7 @@ test.describe('PFC-013 — WebSocket authentifié (build servi par workerd, vrai
   test('PFC-013-S1 — J2 authentifie sa socket depuis sa page : état projeté pour J2, présence publiée à J1', async ({
     browser,
   }) => {
-    const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+    const contexts = await Promise.all([isolatedContext(browser), isolatedContext(browser)]);
     const [hostPage, guestPage] = await Promise.all(contexts.map((context) => context.newPage()));
     if (hostPage === undefined || guestPage === undefined) throw new Error('Pages absentes.');
     for (const page of [hostPage, guestPage]) {
@@ -199,7 +199,7 @@ test.describe('PFC-013 — WebSocket authentifié (build servi par workerd, vrai
   });
 
   test('PFC-013-AC3 — un second onglet de J1 reprend la place : l’ancien onglet est fermé (4409)', async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await isolatedContext(browser);
     const [firstTab, secondTab] = [await context.newPage(), await context.newPage()];
     for (const page of [firstTab, secondTab]) {
       await stubScene(page);

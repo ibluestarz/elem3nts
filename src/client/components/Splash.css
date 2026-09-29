@@ -25,15 +25,21 @@
   color: var(--color-ink-muted);
 }
 
-/* Apparition douce ; l'état final est strictement celui de la maquette. */
-@media (prefers-reduced-motion: no-preference) {
-  .splash__title,
-  .splash__message {
-    animation: splash-rise var(--duration-slow) var(--ease-out-expo) both;
-  }
+/* Apparition douce ; l'état final est strictement celui de la maquette. Mouvements réduits : réglage de
+   l'appareil (posé avant le premier rendu), à défaut la préférence système (base.css). */
+:root:not([data-reduced-motion='true']) .splash__title,
+:root:not([data-reduced-motion='true']) .splash__message {
+  animation: splash-rise var(--duration-slow) var(--ease-out-expo) both;
+}
 
-  .splash__message {
-    animation-delay: 120ms;
+:root:not([data-reduced-motion='true']) .splash__message {
+  animation-delay: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduced-motion]) .splash__title,
+  :root:not([data-reduced-motion]) .splash__message {
+    animation: none;
   }
 }
 

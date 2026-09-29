@@ -14,6 +14,7 @@ interface WorkerConfig {
   readonly assets: unknown;
   readonly durable_objects: { readonly bindings: readonly { readonly name: string; readonly class_name: string }[] };
   readonly migrations: readonly { readonly new_sqlite_classes?: readonly string[]; readonly new_classes?: readonly string[] }[];
+  readonly observability: unknown;
 }
 
 function readConfig(path: string): WorkerConfig {
@@ -33,9 +34,16 @@ describe('PFC-011-AC3 — configuration Worker et migration initiale', () => {
     });
   });
 
-  it('lie ROOMS à la classe Room, créée en SQLite par la migration initiale v1', () => {
-    expect(production.durable_objects.bindings).toEqual([{ name: 'ROOMS', class_name: 'Room' }]);
-    expect(production.migrations).toEqual([{ tag: 'v1', new_sqlite_classes: ['Room'] }]);
+  it('lie ROOMS à Room (migration v1) et LIMITER à Limiter (v2, PFC-020), en SQLite, migrations append-only', () => {
+    expect(production.durable_objects.bindings).toEqual([
+      { name: 'ROOMS', class_name: 'Room' },
+      { name: 'LIMITER', class_name: 'Limiter' },
+    ]);
+    // v1 reste identique à son déploiement ; v2 s'ajoute après elle.
+    expect(production.migrations).toEqual([
+      { tag: 'v1', new_sqlite_classes: ['Room'] },
+      { tag: 'v2', new_sqlite_classes: ['Limiter'] },
+    ]);
     // Chaque classe liée est créée par une migration SQLite (jamais le stockage clé-valeur hérité).
     const sqliteClasses = production.migrations.flatMap((migration) => migration.new_sqlite_classes ?? []);
     for (const { class_name: className } of production.durable_objects.bindings) {
@@ -44,9 +52,14 @@ describe('PFC-011-AC3 — configuration Worker et migration initiale', () => {
     expect(production.migrations.flatMap((migration) => migration.new_classes ?? [])).toEqual([]);
   });
 
-  it('exporte la classe liée depuis l’entrée du Worker', () => {
+  it('exporte les classes liées depuis l’entrée du Worker', () => {
     const entry = readFileSync('src/worker/index.ts', 'utf8');
     expect(entry).toMatch(/^export \{ Room \} from '\.\/room\.ts';$/m);
+    expect(entry).toMatch(/^export \{ Limiter \} from '\.\/limiter\.ts';$/m);
+  });
+
+  it('PFC-020 — active Workers Logs pour tous les événements (journal structuré)', () => {
+    expect(production.observability).toEqual({ enabled: true, head_sampling_rate: 1 });
   });
 
   it('ne déclare ni variable ni secret, et n’envoie aucune télémétrie', () => {

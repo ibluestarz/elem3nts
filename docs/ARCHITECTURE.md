@@ -222,7 +222,8 @@ pas un navigateur à tester. Fallback DOM si WebGL indisponible ou contexte perd
   - `room.ts` : `Room` relit l'état dans son constructeur (réveil, éviction, redéploiement) ; `commit` persiste puis
     remplace la copie en mémoire (point de linéarisation). État illisible ou schéma plus récent : échec fermé, la room
     répond `ROOM_UNAVAILABLE` (503) sans rien relire ni réécrire.
-- ESLint `src/worker/**` : ni `let`/`var` de module (aucune autorité globale), ni UI ni API Node, ni `console`.
+- ESLint `src/worker/**` : ni `let`/`var` de module (aucune autorité globale), ni UI ni API Node, ni `console` ; seule
+  exception, `console.log` dans `log.ts`, le journal structuré (PFC-020).
 
 ### Rooms privées : création et réservation (PFC-012, D36)
 - `entry.ts` : `createRoom` tire code et token, hache le token (`tokens.ts`, Web Crypto) et appelle `create` sur le
@@ -311,12 +312,37 @@ pas un navigateur à tester. Fallback DOM si WebGL indisponible ou contexte perd
 - `codec.ts` v5 : `lastActivityAt` (≥ `createdAt`) ; `storage.ts` : migration v4 → v5.
 - Client : `online/messages.ts` (`isLastingEnd`), notification persistante (`ToastOptions.persistent`).
 
+### Abus et observabilité (PFC-020, D45)
+- `rate.ts` (pur) : `admit`/`prune` (fenêtre glissante exacte, refus non comptés), `clientKey` (`CF-Connecting-IP`,
+  IPv6 /64, `unknown` si illisible), `BUCKET_LIMITS` (`entry`, `socket`).
+- `limiter.ts` : Durable Object `Limiter` (SQLite, liaison `LIMITER`, migration `v2`), un par clé d'IP ; `take(bucket)`
+  lit, décide et écrit (`ctx.storage.kv`, synchrone) sans `await`, puis replanifie une alarme qui efface tout le
+  stockage une fois la fenêtre vide. Aucun compteur en mémoire du Worker.
+- `entry.ts` : `guardEntry` (create/join : Fetch Metadata puis budget `entry`), `connectRoom` (budget `socket` après
+  les gardes PFC-013) ; `rateLimit` → `429` + `Retry-After`, limiteur injoignable → requête admise, panne journalisée.
+- `room.ts` : `#makeRoomForPending` (plafond `MAX_PENDING_SOCKETS`, plus ancienne fermée en 4408) ; `#log` ajoute à
+  chaque événement l'identifiant du Durable Object, la phase, la partie, la manche et la révision courantes.
+- `log.ts` : `logEvent`/`logRecord` (union fermée d'événements, allowlist de champs vérifiée à la compilation),
+  `errorName` (nom seul). `http.ts` : en-têtes de sécurité de toute réponse JSON ; `public/_headers` : ceux des pages.
+- `wrangler.jsonc` : `observability.enabled` (Workers Logs, échantillonnage 1). Exploitation : `docs/RUNBOOK.md`.
+
 ## Rendu et qualité
 Le score, les commandes et les messages restent dans le DOM accessible. Effets distincts pour
-feu/feu, eau/eau et plante/plante ; reduced-motion remplace les particules par une transition discrète.
+feu/feu, eau/eau et plante/plante ; mouvements réduits : le moteur de la maquette atténue (particules ×0,45, temps de
+scène ×0,55, ni parallaxe ni secousse) et l'interface coupe animations et transitions (D46).
 Charger la scène paresseusement ; caper le DPR, borner les particules, suspendre les frames
 quand l'onglet est caché sans suspendre le jeu serveur, libérer géométries/matériaux/listeners.
-Mesure PFC-008 (2026-09-28, i5-1155G7 sous WSL2, sans GPU, Chromium headless SwiftShader, 1280×800) :
-~1 131 ms par frame en qualité haute, ~521 ms en basse ; ce rendu logiciel déclenche le repli « trop lent ».
-La mesure sur vrai GPU relève de PFC-021.
 Pas de setState React à chaque frame. Noter machine et navigateur lors des mesures de performance.
+
+| Mesure (date, machine, navigateur) | Résultat |
+| --- | --- |
+| PFC-008 (2026-09-28, i5-1155G7, WSL2 sans GPU, Chromium headless SwiftShader, 1280×800) | ~1 131 ms par image en haute, ~521 ms en basse : repli « trop lent » |
+| PFC-021 (2026-09-29, i5-1155G7, Intel Iris Xe via D3D12/WSLg, Chromium 153 avec fenêtre, `npm run measure:scene`, deux passages) | médiane 16,7 ms (60 i/s, vsync) en basse, moyenne et haute, repos et chorégraphies, 1280×800 et 390×844 @3x émulé ; p95 16,8–33,5 ms ; pics 0,2–1 s aux changements de qualité ; éclairs ≤ 1/s, variation ≤ 0,037 |
+| PFC-021, 20 revanches (Chromium SwiftShader, `performance.spec.ts` : basse qualité 800×450 ; mesure isolée en haute 1280×800) | tampons 312, textures 14, cibles constants ; programmes recompilés une fois à la 6e partie (54 → 65 ; 65 → 90 en haute) puis plateau ; 174 écouteurs, 175 nœuds constants ; tas +0,08 Mo (+0,02 en haute) de la 10e à la 20e |
+| PFC-021, bundles (gzip -9) | principal 98 ko (React DOM ≈ 2/3), moteur 140 ko (541 ko bruts), CSS 9 ko |
+| PFC-021, ouverture (`npm run measure:load`, RTT 150 ms, 1,6 Mbit/s, CPU ×4, 9 passages) | froid : moteur 2,3 → 5,7 s, accueil 9,5 s ; visite suivante 5,4 s → **4,5 s** avec le cache `immutable` de `/assets/*` (0 revalidation) |
+| Téléphone réel (iPhone, iOS 26.6.2, Apple GPU, WebKit (app Google), 428×745 @3x, 2026-09-29, sonde `?perf`) | médiane 17 ms (60 i/s) à toutes qualités, repos et effets ; p95 17–18 ms ; max 20–126 ms ; éclairs 0/s, variation ≤ 0,024 |
+
+Chien de garde (D33) conservé à 150 ms : ≈ 9× le temps d'image GPU mesuré, sous le meilleur rendu logiciel (521 ms).
+Goulot de l'ouverture à froid : la compilation synchrone des programmes au premier rendu (`getUniforms` de three.js,
+≈ 2,7 s sous CPU ×4, profil CDP) ; compilation asynchrone proposée en PFC-027.

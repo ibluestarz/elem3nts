@@ -1,7 +1,9 @@
-import { connectRoom, createRoom, joinRoom } from './entry.ts';
+import { connectRoom, createRoom, guardEntry, joinRoom } from './entry.ts';
 import type { Env } from './env.ts';
 import { jsonError } from './http.ts';
+import { errorName, logEvent } from './log.ts';
 
+export { Limiter } from './limiter.ts';
 export { Room } from './room.ts';
 
 /**
@@ -13,7 +15,9 @@ export default {
   async fetch(request, env): Promise<Response> {
     try {
       return await route(request, env);
-    } catch {
+    } catch (error) {
+      // Nom de l'erreur seul : ni message, ni pile, ni donnée de la requête (PFC-020).
+      logEvent('http.internal', { error: errorName(error) });
       return jsonError('INTERNAL');
     }
   },
@@ -32,13 +36,15 @@ function route(request: Request, env: Env): Promise<Response> | Response {
 /**
  * Routes de l'API (PROTOCOL « Transport et entrée dans une room ») ; toute autre route répond JSON 404,
  * une méthode autre que celle de la route JSON 405 (POST pour create/join, GET pour la socket).
- * Aucun corps de requête n'est lu.
+ * create/join passent ensuite l'origine puis la limite de débit (PFC-020). Aucun corps de requête n'est lu.
  */
-function routeApi(request: Request, env: Env, pathname: string): Promise<Response> | Response {
+async function routeApi(request: Request, env: Env, pathname: string): Promise<Response> {
   const socketCode = SOCKET_ROUTE.exec(pathname)?.[1];
   if (socketCode !== undefined) return connectRoom(request, env, socketCode);
   const joinCode = JOIN_ROUTE.exec(pathname)?.[1];
   if (pathname !== '/api/rooms' && joinCode === undefined) return jsonError('NOT_FOUND');
   if (request.method !== 'POST') return jsonError('METHOD_NOT_ALLOWED');
+  const refusal = await guardEntry(request, env);
+  if (refusal !== null) return refusal;
   return joinCode === undefined ? createRoom(env) : joinRoom(env, joinCode);
 }

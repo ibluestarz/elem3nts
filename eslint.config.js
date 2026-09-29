@@ -133,6 +133,11 @@ export default defineConfig([
     },
   },
   {
+    // Seule sortie de journal du Worker : le journal structuré à allowlist de champs (PFC-020, D45).
+    files: ['src/worker/log.ts'],
+    rules: { 'no-console': ['error', { allow: ['log'] }] },
+  },
+  {
     files: ['*.config.{ts,js}', 'scripts/**/*.ts', 'tests/**/*.ts'],
     languageOptions: { globals: globals.node },
   },

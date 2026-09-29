@@ -78,13 +78,14 @@ describe('PFC-008 — la scène ne reçoit que des événements décidés (scene
 
 describe('PFC-008 — projection du jeu pour la scène (sceneViewOf)', () => {
   const run = (...actions: GameAction[]): GameState => actions.reduce(gameReducer, initialGameState());
-  const tick = (now: number): GameAction => ({ type: 'tick', now, canSelect: true });
+  const tick = (now: number): GameAction => ({ type: 'tick', now, hotseat: false });
 
   it('pendant la sélection, seuls des verrous : aucun élément choisi ne sort du jeu', () => {
     const selecting = run({ type: 'start', drawEnabled: true, now: 0 }, tick(1800), tick(2200), {
       type: 'choose',
       player: 0,
       element: 'fire',
+      now: 2300,
     });
     const projected = sceneViewOf('arena', selecting);
     expect(projected).toMatchObject({ phase: 'selecting', locked: [true, false], revealed: null, clash: null });
@@ -96,8 +97,8 @@ describe('PFC-008 — projection du jeu pour la scène (sceneViewOf)', () => {
       { type: 'start', drawEnabled: true, now: 0 },
       tick(1800),
       tick(2200),
-      { type: 'choose', player: 0, element: 'water' },
-      { type: 'choose', player: 1, element: 'water' },
+      { type: 'choose', player: 0, element: 'water', now: 2300 },
+      { type: 'choose', player: 1, element: 'water', now: 2300 },
       tick(7200),
     );
     expect(sceneViewOf('arena', reveal)).toMatchObject({
@@ -112,8 +113,8 @@ describe('PFC-008 — projection du jeu pour la scène (sceneViewOf)', () => {
       { type: 'start', drawEnabled: true, now: 0 },
       tick(1800),
       tick(2200),
-      { type: 'choose', player: 0, element: 'fire' },
-      { type: 'choose', player: 1, element: 'plant' },
+      { type: 'choose', player: 0, element: 'fire', now: 2300 },
+      { type: 'choose', player: 1, element: 'plant', now: 2300 },
       tick(7200),
       tick(8300),
       tick(8300 + clashDelays('burn').toImpact),

@@ -1,6 +1,22 @@
-import type { Locator, Page } from '@playwright/test';
+import { randomInt } from 'node:crypto';
+import type { Browser, BrowserContext, BrowserContextOptions, Locator, Page } from '@playwright/test';
 import { matchEndedState, pausedState, roomOf, roundResultState, selectingState, startingState } from './online-fake.ts';
 import { CYCLE, clashDelays, type ClashKind } from './timing.ts';
+
+/**
+ * Adresse cliente d'un contexte de test (PFC-020, D45). Le Worker limite créations, jonctions et sockets par
+ * `CF-Connecting-IP` ; en production Cloudflare pose cet en-tête et écrase celui du client, en local il est
+ * pris tel quel. Sans lui, tous les navigateurs de la recette partageraient le budget de 127.0.0.1. Un /64
+ * aléatoire du préfixe de documentation IPv6 (2001:db8::/32) : deux contextes ne partagent pas de budget.
+ */
+export function testClientIp(): string {
+  return `2001:db8:${randomInt(0x10000).toString(16)}:${randomInt(0x10000).toString(16)}::1`;
+}
+
+/** Contexte doté de sa propre adresse cliente : il a ses propres budgets, comme un joueur sur son réseau. */
+export function isolatedContext(browser: Browser, options: BrowserContextOptions = {}): Promise<BrowserContext> {
+  return browser.newContext({ ...options, extraHTTPHeaders: { ...options.extraHTTPHeaders, 'cf-connecting-ip': testClientIp() } });
+}
 
 /** Collecte toute erreur/avertissement console, exception, requête échouée ou réponse HTTP ≥ 400. */
 export function trackProblems(page: Page): string[] {
@@ -98,6 +114,8 @@ export interface ScreenState {
   readonly reach: (page: Page) => Promise<void>;
   /** Limite l'état au bureau (la sélection au téléphone est tour par tour, PFC-025). */
   readonly desktopOnly?: boolean;
+  /** Limite l'état au téléphone (tour par tour sur un seul appareil, PFC-025). */
+  readonly mobileOnly?: boolean;
   /**
    * Zone exclue de la comparaison, masquée à l'identique des deux côtés : même boîte, sélecteur
    * propre à chaque rendu. Réservée à un élément pas encore livré (minuteur jusqu'à PFC-006).
@@ -233,6 +251,23 @@ async function toImpact(page: Page, kind: ClashKind, subtitle: string): Promise<
   const reveal = kind === 'void' ? CYCLE.revealEmpty : CYCLE.reveal;
   await step(page, reveal, () => page.locator('[data-phase="clash"], body:not(:has([data-phase]))').first().waitFor());
   await step(page, clashDelays(kind).toImpact, () => page.getByText(subtitle).first().waitFor());
+}
+
+/** Téléphone : ouverture (1,8 s), attente (0,4 s), puis voile « Joueur 1, à vous » de la manche 1 (PFC-025). */
+async function toTurnGate(page: Page): Promise<void> {
+  await click(page, 'Jouer en local');
+  await click(page, 'Score cible 3');
+  await click(page, /^Commencer/);
+  await page.getByText('Que le duel commence').waitFor();
+  await step(page, 1800, () => page.getByText('Que le duel commence').waitFor({ state: 'detached' }));
+  await step(page, 400, () => page.getByText('Joueur 1, à vous').waitFor());
+}
+
+/** Voile de Joueur 1 franchi : tour de Joueur 1, zones à toucher et indice de la maquette. */
+async function toTurnSelection(page: Page): Promise<void> {
+  await toTurnGate(page);
+  await click(page, 'Je suis prêt');
+  await page.getByText('Joueur 1 · touchez un élément').waitFor();
 }
 
 /** Feu (J1, touche Q en AZERTY) contre Plante (J2, touche L). */
@@ -504,6 +539,27 @@ export const SCREEN_STATES: readonly ScreenState[] = [
       await step(page, CYCLE.closing, () => page.getByText('Fin de partie').waitFor());
     },
   },
+  // PFC-025 : tour par tour sur un seul téléphone (maquette `gate`, `trinTaps`, `mobHint`).
+  { name: 'turn-gate-p1', mobileOnly: true, reach: toTurnGate },
+  { name: 'turn-select-p1', mobileOnly: true, trinity: true, reach: toTurnSelection },
+  {
+    name: 'turn-gate-p2',
+    mobileOnly: true,
+    trinity: true,
+    reach: async (page) => {
+      await toTurnSelection(page);
+      await click(page, 'Feu');
+      await page.getByText('Passez le téléphone à Joueur 2').waitFor();
+    },
+  },
+  {
+    name: 'turn-gate-p2-late',
+    mobileOnly: true,
+    reach: async (page) => {
+      await toTurnSelection(page);
+      await step(page, CYCLE.selection, () => page.getByText('Joueur 1 n’a pas choisi à temps. Joueur 2 aura 5 secondes.').waitFor());
+    },
+  },
   // PFC-016 : arène en ligne (maquette `isOnline`), adversaire simulé des deux côtés.
   {
     name: 'online-arena-intro',
@@ -677,7 +733,7 @@ export async function openFrozen(page: Page): Promise<void> {
 
 /** États applicables à une taille d'écran (bureau à partir de 720 px, seuil de la maquette). */
 export const statesFor = (viewport: { width: number }): readonly ScreenState[] =>
-  SCREEN_STATES.filter((state) => viewport.width >= 720 || state.desktopOnly !== true);
+  SCREEN_STATES.filter((state) => (viewport.width >= 720 ? state.mobileOnly !== true : state.desktopOnly !== true));
 
 /**
  * Scène 3D neutralisée pour les tests d'interface et de parcours, comme le moteur de la maquette :
@@ -728,12 +784,21 @@ export async function seedRandomOnWebGL(page: Page): Promise<void> {
 }
 
 /** Masque tout ce qui recouvre le canvas 3D (maquette et application : canvas premier enfant). */
-/** Masque l'interface pour capturer la scène seule ; renvoie de quoi la réafficher. */
+/**
+ * Masque l'interface pour capturer la scène seule ; renvoie de quoi la réafficher. Feuille construite (CSSOM,
+ * `adoptedStyleSheets`) et non balise `<style>` : la CSP de production (`style-src 'self'`, PFC-020) refuse tout style
+ * inline, y compris celui d'un outil de test ; la règle s'applique de même aux éléments ajoutés ensuite.
+ */
 export async function hideInterface(page: Page): Promise<() => Promise<void>> {
-  const style = await page.addStyleTag({ content: 'canvas ~ * { visibility: hidden !important; }' });
+  const sheet = await page.evaluateHandle(() => {
+    const hidden = new CSSStyleSheet();
+    hidden.replaceSync('canvas ~ * { visibility: hidden !important; }');
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, hidden];
+    return hidden;
+  });
   return async () => {
-    await style.evaluate((node) => {
-      node.parentNode?.removeChild(node);
+    await sheet.evaluate((hidden) => {
+      document.adoptedStyleSheets = document.adoptedStyleSheets.filter((adopted) => adopted !== hidden);
     });
   };
 }
@@ -747,8 +812,21 @@ export const SCENE_HOME_FRAMES_MS = 160;
  */
 export const SCENE_TOLERANCE = { animations: 'disabled', threshold: 0.1, maxDiffPixelRatio: 0.0005 } as const;
 
-/** Part de pixels différant de plus de 25 niveaux entre deux captures PNG (calcul dans le navigateur). */
+/**
+ * Part de pixels différant de plus de 25 niveaux entre deux captures PNG, calculée dans le navigateur. Le calcul se
+ * fait dans une page vierge du même contexte (`about:blank`, sans CSP) : la page de l'application refuse les images
+ * `data:` (`img-src 'self'`, PFC-020) et sa scène 3D occupe son fil principal.
+ */
 export async function strongDiffRatio(page: Page, first: Buffer, second: Buffer): Promise<number> {
+  const scratch = await page.context().newPage();
+  try {
+    return await diffInBlankPage(scratch, first, second);
+  } finally {
+    await scratch.close();
+  }
+}
+
+function diffInBlankPage(page: Page, first: Buffer, second: Buffer): Promise<number> {
   return page.evaluate(
     async ([a, b]) => {
       const load = (src: string) =>

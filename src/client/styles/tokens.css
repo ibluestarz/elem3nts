@@ -7,6 +7,8 @@
   --color-void: #030405;
   --color-ground: #040506;
   --color-arena: #05080b;
+  /* Voile opaque du tour par tour (maquette `gate`). */
+  --color-veil: #05070a;
 
   /* Encres */
   --color-ink: #e9e3d6;

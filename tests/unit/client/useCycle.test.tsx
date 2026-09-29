@@ -14,7 +14,7 @@ describe('PFC-006-AC3 — horloge du cycle', () => {
     const dispatch = vi.fn();
 
     renderHook(() => {
-      useCycle(1500, true, dispatch);
+      useCycle(1500, false, dispatch);
     });
     // La minuterie de 500 ms se déclenche, mais l'horloge mesurée n'a avancé que de 499,6 ms.
     clock = 1499.6;
@@ -28,7 +28,7 @@ describe('PFC-006-AC3 — horloge du cycle', () => {
       vi.advanceTimersByTime(1);
     });
     expect(dispatch).toHaveBeenCalledTimes(1);
-    expect(dispatch).toHaveBeenCalledWith({ type: 'tick', now: 1500, canSelect: true });
+    expect(dispatch).toHaveBeenCalledWith({ type: 'tick', now: 1500, hotseat: false });
   });
 
   it('ne planifie rien sans échéance, et retire minuterie et écouteur au démontage', () => {
@@ -37,13 +37,13 @@ describe('PFC-006-AC3 — horloge du cycle', () => {
     const removed = vi.spyOn(document, 'removeEventListener');
 
     const idle = renderHook(() => {
-      useCycle(null, true, dispatch);
+      useCycle(null, false, dispatch);
     });
     expect(vi.getTimerCount()).toBe(0);
     idle.unmount();
 
     const { unmount } = renderHook(() => {
-      useCycle(performance.now() + 5000, true, dispatch);
+      useCycle(performance.now() + 5000, false, dispatch);
     });
     expect(vi.getTimerCount()).toBe(1);
     unmount();

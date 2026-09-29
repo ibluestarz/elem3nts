@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { ELEMENTS } from '../domain/index.ts';
+import { ELEMENTS, type Element, type PlayerIndex } from '../domain/index.ts';
 import { ToastProvider } from './components/Toast.tsx';
 import { useToast } from './components/toastContext.ts';
 import { useCompact } from './hooks/useCompact.ts';
@@ -65,6 +65,8 @@ function StageScreens() {
   const [settingsReturn, setSettingsReturn] = useState<'home' | 'setup'>('home');
   const [homeFocus, setHomeFocus] = useState<HomeAction | null>(null);
   const [focusInput, setFocusInput] = useState(0);
+  /** Retour des réglages vers la préparation : focus rendu à « Modifier les touches » (PFC-021). */
+  const [setupFocus, setSetupFocus] = useState<'title' | 'keys'>('title');
 
   const scene = useScene();
   const sceneOptions = { quality: preferences.quality, reducedMotion: preferences.reducedMotion, compact };
@@ -135,9 +137,8 @@ function StageScreens() {
     dispatch({ type: 'rematch', now: now() });
   }, []);
 
-  // Horloge du cycle (D31) ; sur téléphone, la partie attend avant la sélection (PFC-025).
-  const canSelect = !compact;
-  useCycle(game.deadline, canSelect, dispatch);
+  // Horloge du cycle (D31) ; sur un seul téléphone, chaque manche s'ouvre en tour par tour (PFC-025, D47).
+  useCycle(game.deadline, compact, dispatch);
 
   // Sélection ouverte, pour n'annuler que les frappes traitées ; le reducer reste l'autorité.
   const accepting = useRef(false);
@@ -146,7 +147,15 @@ function StageScreens() {
   }, [game.phase]);
 
   const choose = useCallback((slot: KeySlot) => {
-    dispatch({ type: 'choose', player: slot.player, element: slot.element });
+    dispatch({ type: 'choose', player: slot.player, element: slot.element, now: now() });
+  }, []);
+
+  // Tour par tour : choix au toucher du joueur dont c'est le tour, et « Je suis prêt » du voile.
+  const chooseTurn = useCallback((player: PlayerIndex, element: Element) => {
+    dispatch({ type: 'choose', player, element, now: now() });
+  }, []);
+  const turnReady = useCallback(() => {
+    dispatch({ type: 'turn-ready', now: now() });
   }, []);
 
   const learn = useCallback(
@@ -159,7 +168,8 @@ function StageScreens() {
   );
 
   useLocalKeys({
-    enabled: screen === 'arena' && !compact && game.phase !== 'ended',
+    // Clavier partagé : manches simultanées seulement (en tour par tour, le toucher choisit, D47).
+    enabled: screen === 'arena' && game.turn === null && game.phase !== 'ended',
     accepting,
     bindings: preferences.bindings,
     onChoose: choose,
@@ -176,6 +186,7 @@ function StageScreens() {
       if (action === 'local') {
         // Entrer en mode local ouvre une nouvelle session : trophées à 0/0 (D13).
         dispatch({ type: 'new-session' });
+        setSetupFocus('title');
         setScreen('setup');
       }
       else if (action === 'online') setScreen('online');
@@ -186,8 +197,10 @@ function StageScreens() {
   );
 
   const closeSettings = useCallback(() => {
-    if (settingsReturn === 'setup') setScreen('setup');
-    else goHome('settings');
+    if (settingsReturn === 'setup') {
+      setSetupFocus('keys');
+      setScreen('setup');
+    } else goHome('settings');
   }, [goHome, settingsReturn]);
 
   const ended = game.phase === 'ended';
@@ -202,7 +215,8 @@ function StageScreens() {
         if (ownsKey(event.target)) return;
         if (screen === 'home') {
           event.preventDefault();
-          setScreen('setup');
+          // Même action que « Jouer en local » : nouvelle session (D13), au clavier comme au pointeur.
+          onHome('local');
         } else if (screen === 'setup') {
           event.preventDefault();
           start();
@@ -223,7 +237,7 @@ function StageScreens() {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [screen, ended, start, quit, replay, closeSettings, goHome]);
+  }, [screen, ended, start, quit, replay, closeSettings, goHome, onHome]);
 
   return (
     <main className="stage" ref={rootRef} aria-labelledby="screen-title">
@@ -252,6 +266,7 @@ function StageScreens() {
             openSettings('setup');
           }}
           onStart={start}
+          initialFocus={setupFocus}
         />
       )}
       {screen === 'online' && (
@@ -290,7 +305,7 @@ function StageScreens() {
         (ended ? (
           <EndScreen compact={compact} {...localEndProps(game.match, game.session.trophies)} onReplay={replay} onHome={quit} />
         ) : (
-          <Arena compact={compact} game={game} keyLabels={keyLabels} onQuit={quit} />
+          <Arena compact={compact} game={game} keyLabels={keyLabels} onQuit={quit} onChoose={chooseTurn} onTurnReady={turnReady} />
         ))}
     </main>
   );

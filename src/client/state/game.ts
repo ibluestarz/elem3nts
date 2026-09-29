@@ -26,8 +26,9 @@ export { CLASH_TIMING, CYCLE_MS, clashDelays } from '../../shared/cycle.ts';
 
 /**
  * - `intro` : bannière « Que le duel commence » ;
- * - `ready` : bannière effacée, sélection imminente (attente sur téléphone : PFC-025) ;
- * - `selecting` : fenêtre de 5 s, choix verrouillés et masqués ;
+ * - `ready` : bannière effacée, sélection imminente ;
+ * - `gate` : tour par tour sur un seul téléphone (PFC-025) : voile opaque, le joueur `turn` confirme être prêt ;
+ * - `selecting` : fenêtre de 5 s, choix verrouillés et masqués (des deux joueurs, ou du seul joueur `turn`) ;
  * - `reveal` : éléments révélés, résolution déjà appliquée, scores d'avant affichés ;
  * - `clash` : chorégraphie de la confrontation jusqu'à l'impact, scores d'avant toujours affichés ;
  * - `result` : impact, scores, deltas et explication jusqu'à la fin de l'effet (+ 1,6 s) ;
@@ -37,6 +38,7 @@ export { CLASH_TIMING, CYCLE_MS, clashDelays } from '../../shared/cycle.ts';
 export type Phase =
   | 'intro'
   | 'ready'
+  | 'gate'
   | 'selecting'
   | 'reveal'
   | 'clash'
@@ -58,6 +60,11 @@ export interface GameState {
   readonly deadline: number | null;
   /** Numéro de la manche en cours ou dernière jouée (0 avant la première). */
   readonly round: number;
+  /**
+   * Tour par tour (PFC-025, D47) : joueur dont c'est le tour (voile puis 5 s), `null` pour une manche simultanée.
+   * Fixé à l'ouverture de la manche : un redimensionnement en cours de manche n'en change pas le mode.
+   */
+  readonly turn: PlayerIndex | null;
   /** Mort subite annoncée : égalité au-delà de X, nul OFF (R08, D05). */
   readonly sudden: boolean;
   /** Choix de la manche : jamais rendus avant la révélation. */
@@ -76,11 +83,14 @@ export type GameAction =
   | { readonly type: 'step'; readonly delta: 1 | -1 }
   | { readonly type: 'start'; readonly drawEnabled: boolean; readonly now: number }
   /**
-   * Échéance atteinte : au plus une transition par action, idempotente. `canSelect` est faux
-   * quand aucune saisie n'est possible (téléphone, PFC-025) : la partie attend avant la sélection.
+   * Échéance atteinte : au plus une transition par action, idempotente. `hotseat` (scène de moins de
+   * 720 px, un seul téléphone) ouvre la manche suivante en tour par tour (PFC-025).
    */
-  | { readonly type: 'tick'; readonly now: number; readonly canSelect: boolean }
-  | { readonly type: 'choose'; readonly player: PlayerIndex; readonly element: Element }
+  | { readonly type: 'tick'; readonly now: number; readonly hotseat: boolean }
+  /** Tour par tour : le joueur du voile se déclare prêt, sa fenêtre de 5 s s'ouvre. */
+  | { readonly type: 'turn-ready'; readonly now: number }
+  /** Choix d'un joueur ; en tour par tour, celui de Joueur 2 déclenche aussitôt la révélation (`now`). */
+  | { readonly type: 'choose'; readonly player: PlayerIndex; readonly element: Element; readonly now: number }
   /** Revanche depuis l'écran de fin : mêmes réglages, nouveau matchId, trophées conservés (D12). */
   | { readonly type: 'rematch'; readonly now: number }
   /** Entrée en mode local depuis l'accueil : nouvelle session, trophées à 0/0 (D13). */
@@ -91,6 +101,7 @@ const IDLE_CYCLE = {
   phase: 'intro',
   deadline: null,
   round: 0,
+  turn: null,
   sudden: false,
   selection: EMPTY_SELECTION,
   revealed: null,
@@ -129,40 +140,43 @@ export function displayedScores(state: GameState): Scores | null {
   return state.match?.scores ?? null;
 }
 
+/** Résolution unique de la manche (SPEC cycle), choix manquants compris (R11, R12). */
+function resolve(state: GameState, match: Match, now: number): GameState {
+  const play = playRound(match, state.selection);
+  return {
+    ...state,
+    phase: 'reveal',
+    deadline: now + revealDelay(play.round.kind),
+    match: play.match,
+    revealed: state.selection,
+    play,
+  };
+}
+
+/** Tour par tour : fin du tour de Joueur 1 (choix ou échéance), voile avant celui de Joueur 2. */
+const handOver = (state: GameState): GameState => ({ ...state, phase: 'gate', turn: 1, deadline: null });
+
 /**
  * Transition due à l'échéance. Chaque échéance suivante part de `now` : une transition traitée en
  * retard (onglet masqué) ne déclenche pas de rattrapage en rafale (D31).
  */
-function advance(state: GameState, now: number, canSelect: boolean): GameState {
+function advance(state: GameState, now: number, hotseat: boolean): GameState {
   const { match } = state;
   if (!match) return state;
   switch (state.phase) {
     case 'intro':
       return { ...state, phase: 'ready', deadline: now + CYCLE_MS.ready };
     case 'ready':
-    case 'pause':
-      if (!canSelect) return state;
-      return {
-        ...state,
-        phase: 'selecting',
-        deadline: now + CYCLE_MS.selection,
-        round: state.round + 1,
-        selection: EMPTY_SELECTION,
-        revealed: null,
-        play: null,
-      };
-    case 'selecting': {
-      // Résolution unique à l'échéance (SPEC cycle), choix manquants compris (R11, R12).
-      const play = playRound(match, state.selection);
-      return {
-        ...state,
-        phase: 'reveal',
-        deadline: now + revealDelay(play.round.kind),
-        match: play.match,
-        revealed: state.selection,
-        play,
-      };
+    case 'pause': {
+      const round = { round: state.round + 1, selection: EMPTY_SELECTION, revealed: null, play: null };
+      // Un seul téléphone : voile de Joueur 1, sans échéance (il se déclare prêt).
+      if (hotseat) return { ...state, ...round, phase: 'gate', turn: 0, deadline: null };
+      return { ...state, ...round, phase: 'selecting', turn: null, deadline: now + CYCLE_MS.selection };
     }
+    case 'gate':
+      return state;
+    case 'selecting':
+      return state.turn === 0 ? handOver(state) : resolve(state, match, now);
     case 'reveal':
       if (!state.play) return state;
       return { ...state, phase: 'clash', deadline: now + clashDelays(state.play.round.kind).toImpact };
@@ -211,12 +225,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'tick':
       if (state.deadline === null || action.now < state.deadline) return state;
-      return advance(state, action.now, action.canSelect);
+      return advance(state, action.now, action.hotseat);
+    case 'turn-ready':
+      if (state.phase !== 'gate' || state.turn === null) return state;
+      return { ...state, phase: 'selecting', deadline: action.now + CYCLE_MS.selection };
     case 'choose': {
-      if (!isMatchInProgress(state) || state.phase !== 'selecting') return state;
+      const { match } = state;
+      if (!match || !isMatchInProgress(state) || state.phase !== 'selecting') return state;
+      // Tour par tour : seul le joueur dont c'est le tour choisit.
+      if (state.turn !== null && action.player !== state.turn) return state;
       // Premier choix verrouillé (D08) : un second choix rend l'état inchangé.
       const lock = lockChoice(state.selection, action.player, action.element);
-      return lock.locked ? { ...state, selection: lock.selection } : state;
+      if (!lock.locked) return state;
+      const locked = { ...state, selection: lock.selection };
+      // Le choix clôt le tour : voile de Joueur 2, ou révélation immédiate après celui de Joueur 2 (SPEC).
+      if (state.turn === 0) return handOver(locked);
+      return state.turn === 1 ? resolve(locked, match, action.now) : locked;
     }
     case 'rematch': {
       // Seulement depuis une partie terminée : un second appui (Espace maintenu, double clic) est sans effet.

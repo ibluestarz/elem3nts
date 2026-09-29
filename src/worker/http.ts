@@ -38,6 +38,15 @@ const HTTP_ERRORS = {
    */
   ORIGIN_FORBIDDEN: { status: 403, code: 'ORIGIN_FORBIDDEN', message: 'Origine non autorisée.' },
   /**
+   * Limite de débit par IP dépassée (PFC-020, D45) : créations et jonctions, ou ouvertures de socket.
+   * Refus avant toute room ; `Retry-After` (secondes) est fixé par l'appelant.
+   */
+  RATE_LIMITED: {
+    status: 429,
+    code: 'RATE_LIMITED',
+    message: 'Trop de tentatives : patientez une minute puis réessayez.',
+  },
+  /**
    * Code mal formé, room inconnue, expirée ou fermée : une seule réponse, pour ne jamais révéler
    * si un code a existé.
    */
@@ -57,19 +66,26 @@ const HTTP_ERRORS = {
 
 export type HttpErrorReason = keyof typeof HTTP_ERRORS;
 
-/** En-têtes de toute réponse JSON de l'API : jamais mise en cache, jamais réinterprétée par le navigateur. */
+/**
+ * En-têtes de toute réponse JSON de l'API : jamais mise en cache, jamais réinterprétée par le navigateur,
+ * jamais exécutée, encadrée ni lue par un autre site (PFC-020 ; pages et fichiers : `public/_headers`).
+ */
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'cache-control': 'no-store',
   'x-content-type-options': 'nosniff',
+  'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+  'cross-origin-resource-policy': 'same-origin',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY',
 } as const;
 
 export function jsonResponse(body: unknown, status: number, headers: Readonly<Record<string, string>> = {}): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...headers } });
 }
 
-/** Réponse d'erreur `{ error: { code, message } }`. */
-export function jsonError(reason: HttpErrorReason): Response {
+/** Réponse d'erreur `{ error: { code, message } }` ; `headers` s'ajoute aux en-têtes fixes du motif. */
+export function jsonError(reason: HttpErrorReason, headers: Readonly<Record<string, string>> = {}): Response {
   const error: HttpError = HTTP_ERRORS[reason];
-  return jsonResponse({ error: { code: error.code, message: error.message } }, error.status, error.headers);
+  return jsonResponse({ error: { code: error.code, message: error.message } }, error.status, { ...error.headers, ...headers });
 }

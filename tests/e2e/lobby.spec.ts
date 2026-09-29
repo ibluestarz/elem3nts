@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { host, join, lobbyTitle, openOnline, player } from './online-driver.ts';
-import { stubScene } from './support.ts';
+import { isolatedContext, stubScene } from './support.ts';
 
 /**
  * PFC-015 — créer, rejoindre et lobby synchronisé, contre le Worker local réel (workerd) :
@@ -110,7 +110,7 @@ test.describe('PFC-015 — interface créer rejoindre et lobby synchronisé', ()
   });
 
   test('PFC-015-AC3 — presse-papier refusé : repli explicite avec le lien sélectionné', async ({ browser }) => {
-    const context = await browser.newContext({ locale: 'fr-FR' });
+    const context = await isolatedContext(browser, { locale: 'fr-FR' });
     const page = await context.newPage();
     await stubScene(page);
     await page.addInitScript(() => {

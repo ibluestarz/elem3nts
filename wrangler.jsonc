@@ -16,8 +16,17 @@
     "run_worker_first": ["/api", "/api/*"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+    // LIMITER : un objet par clé d'IP, limites de débit create/join et sockets (PFC-020, D45).
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "LIMITER", "class_name": "Limiter" }
+    ]
   },
   // Migrations append-only : ne jamais modifier ni supprimer une étape déjà déployée.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] },
+    { "tag": "v2", "new_sqlite_classes": ["Limiter"] }
+  ],
+  // Workers Logs : journaux structurés du Worker (log.ts), tous conservés (docs/RUNBOOK.md pour les quotas).
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
 }

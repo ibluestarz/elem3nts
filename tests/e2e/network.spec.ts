@@ -166,8 +166,11 @@ test.describe('PFC-019 — recette multijoueur et tests adverses', () => {
   });
 });
 
-/** Marqueurs du Worker de test (`tests/integration/harness`), qui ne doivent jamais atteindre le build. */
-const HARNESS_MARKERS = ['__harness', 'failCommits', 'runAlarm', 'alarmAt', 'harness/entry'];
+/**
+ * Marqueurs du Worker de test (`tests/integration/harness`), qui ne doivent jamais atteindre le build. PFC-020 :
+ * l'en-tête qui impose l'adresse cliente contournerait les limites par IP.
+ */
+const HARNESS_MARKERS = ['__harness', 'failCommits', 'runAlarm', 'alarmAt', 'harness/entry', 'x-harness-client-ip'];
 
 function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })

@@ -100,12 +100,17 @@ export function useSceneHost(canvas: HTMLCanvasElement | null): SceneState {
           stopWatch();
           setState(sceneFallback('lost'));
         };
-        stopWatch = watchFrameRate(() => {
-          if (engine !== created) return;
-          created.destroy();
-          engine = null;
-          setState(sceneFallback('slow'));
-        });
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('perf')) {
+          // Sonde de temps d'image (PFC-021, développement seulement) : le chien de garde ne coupe pas la mesure.
+          void import('./perfProbe.ts').then((probe) => probe.runProbe(created, canvas));
+        } else {
+          stopWatch = watchFrameRate(() => {
+            if (engine !== created) return;
+            created.destroy();
+            engine = null;
+            setState(sceneFallback('slow'));
+          });
+        }
         setState({ status: 'ready', reason: null, engine: created, trinity: created.getTrinity() });
       })
       .catch(() => {

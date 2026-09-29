@@ -47,7 +47,9 @@ describe('PFC-015 — entrée HTTP dans une room', () => {
     [409, 'ROOM_FULL', 'ROOM_FULL'],
     [503, 'CODE_COLLISION', 'CODE_COLLISION'],
     [500, 'INTERNAL', 'server'],
-    [429, 'RATE_LIMITED', 'server'],
+    // PFC-020 : limite de débit par adresse, message dédié.
+    [429, 'RATE_LIMITED', 'RATE_LIMITED'],
+    [429, 'AUTRE', 'server'],
   ])('PFC-015-AC3 — %i %s → %s', async (status, code, failure) => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(errorResponse(status, code))));
     expect(await joinRoom(CODE, new AbortController().signal)).toEqual({ ok: false, failure });

@@ -3,6 +3,7 @@ import { createRoom } from '../../../src/worker/entry.ts';
 import { generateResumeToken, hashResumeToken } from '../../../src/worker/tokens.ts';
 import type { Env } from '../../../src/worker/env.ts';
 import production from '../../../src/worker/index.ts';
+import { Limiter as ProductionLimiter } from '../../../src/worker/limiter.ts';
 import { Room as ProductionRoom } from '../../../src/worker/room.ts';
 import { RoomStorageError, type RoomStorageErrorCode } from '../../../src/worker/errors.ts';
 
@@ -18,15 +19,38 @@ import { RoomStorageError, type RoomStorageErrorCode } from '../../../src/worker
  * - `/__harness/rooms/:name/burst` (POST `{ count }`) : `count` réservations de J2 lancées au même instant
  *   depuis le runtime, sans l'étalement des requêtes HTTP : la course la plus serrée possible ;
  * - `/__harness/clock` (PUT `{ now }`) : fige l'horloge des rooms de ce Worker (`null` : heure réelle) ;
- * - `/__harness/create` (POST `{ codes }`) : création de production avec des codes imposés (collisions).
+ * - `/__harness/create` (POST `{ codes }`) : création de production avec des codes imposés (collisions) ;
+ * - `/__harness/limiter` (POST `{ key }`) : exécute l'alarme du limiteur de cette clé d'IP puis rend la
+ *   prochaine (PFC-020).
  * Le RPC reste interne au runtime : un stub tenu depuis Node empêcherait l'éviction de l'objet.
+ *
+ * Adresse cliente (PFC-020) : en local, toutes les requêtes viennent de 127.0.0.1 et partageraient un seul
+ * budget de débit sous une horloge figée. Chaque requête reçoit donc sa propre `CF-Connecting-IP` (un /64
+ * IPv6 de documentation distinct), sauf si le test impose la sienne par `x-harness-client-ip` : les tests
+ * de limites de débit (`abuse.test.ts`) passent ainsi par le limiteur de production, clé comprise.
  */
 export type CommitResult =
   | { readonly ok: true; readonly state: PersistedRoom }
   | { readonly ok: false; readonly code: RoomStorageErrorCode };
 
-/** Horloge figée du harnais, partagée par les rooms de l'isolat de test (jamais en production). */
+/** Horloge figée du harnais, partagée par les rooms et limiteurs de l'isolat de test (jamais en production). */
 const clock: { now: number | null } = { now: null };
+
+/** Compteur des adresses clientes distinctes attribuées aux requêtes sans adresse imposée. */
+const addresses = { next: 0 };
+
+/** Limiteur de production sur l'horloge figée du harnais. */
+export class Limiter extends ProductionLimiter {
+  protected override now(): number {
+    return clock.now ?? Date.now();
+  }
+
+  /** Exécute le traitement d'alarme, puis rend l'alarme planifiée ensuite (`null` : stockage effacé). */
+  async runAlarm(): Promise<number | null> {
+    await this.alarm();
+    return this.ctx.storage.getAlarm();
+  }
+}
 
 export class Room extends ProductionRoom {
   /** Écritures encore à faire échouer ; propre à l'instance, perdue à sa reconstruction. */
@@ -79,44 +103,68 @@ export class Room extends ProductionRoom {
 
 const HARNESS_ROUTE = /^\/__harness\/rooms\/([A-Za-z0-9_-]{1,64})(\/fetch|\/alarm|\/burst|\/fail)?$/;
 
-interface HarnessEnv extends Omit<Env, 'ROOMS'> {
+interface HarnessEnv extends Omit<Env, 'ROOMS' | 'LIMITER'> {
   readonly ROOMS: DurableObjectNamespace<Room>;
+  readonly LIMITER: DurableObjectNamespace<Limiter>;
 }
 
+/**
+ * Copie, pour le Worker de production, dotée de l'adresse cliente imposée par le test ou d'une adresse neuve
+ * (voir l'en-tête du fichier). Sans corps : l'API n'en lit aucun, et l'original garde le sien, que le runtime
+ * draine comme avant (un corps transféré puis jamais lu coupe la connexion réutilisée par la requête suivante).
+ */
+function withClientIp(request: IncomingRequest): IncomingRequest {
+  const headers = new Headers(request.headers);
+  const pinned = headers.get('x-harness-client-ip');
+  headers.delete('x-harness-client-ip');
+  addresses.next += 1;
+  headers.set('cf-connecting-ip', pinned ?? `2001:db8:${(addresses.next >> 16).toString(16)}:${(addresses.next & 0xffff).toString(16)}::1`);
+  // Même URL, méthode et en-têtes ; le Worker de production ne lit ni corps ni propriétés `cf`.
+  return new Request(request.url, { method: request.method, headers });
+}
+
+type IncomingRequest = Parameters<typeof production.fetch>[0];
+
 export default {
-  async fetch(request, env): Promise<Response> {
-    const { pathname } = new URL(request.url);
-    if (pathname === '/__harness/clock') {
-      clock.now = (await request.json<{ now: number | null }>()).now;
-      return Response.json({ now: clock.now });
-    }
-    if (pathname === '/__harness/create') {
-      const codes = [...(await request.json<{ codes: string[] }>()).codes];
-      return createRoom(env, () => codes.shift() ?? 'ÉPUISÉ');
-    }
-    const match = HARNESS_ROUTE.exec(pathname);
-    const name = match?.[1];
-    if (name === undefined) return production.fetch(request, env);
-    const stub = env.ROOMS.getByName(name);
-    if (match?.[2] === '/fetch') return stub.fetch(request);
-    if (match?.[2] === '/burst') {
-      const { count } = await request.json<{ count: number }>();
-      const hashes = await Promise.all(Array.from({ length: count }, () => hashResumeToken(generateResumeToken())));
-      const outcomes = await Promise.all(hashes.map((hash) => stub.join(hash)));
-      return Response.json(outcomes.map((outcome, index) => ({ ...outcome, tokenHash: hashes[index] })));
-    }
-    if (match?.[2] === '/alarm') {
-      const failed = request.method === 'POST' ? !(await stub.runAlarm()) : false;
-      return Response.json({ alarm: await stub.alarmAt(), failed });
-    }
-    if (match?.[2] === '/fail') {
-      await stub.failCommits((await request.json<{ commits: number }>()).commits);
-      return Response.json({ ok: true });
-    }
-    if (request.method === 'PUT') {
-      const next = await request.json<PersistedRoom>();
-      return Response.json(await stub.write(next));
-    }
-    return Response.json({ state: await stub.read() });
-  },
+  fetch: route,
 } satisfies ExportedHandler<HarnessEnv>;
+
+async function route(request: IncomingRequest, env: HarnessEnv): Promise<Response> {
+  const { pathname } = new URL(request.url);
+  if (pathname === '/__harness/clock') {
+    clock.now = (await request.json<{ now: number | null }>()).now;
+    return Response.json({ now: clock.now });
+  }
+  if (pathname === '/__harness/limiter') {
+    const { key } = await request.json<{ key: string }>();
+    return Response.json({ alarm: await env.LIMITER.getByName(key).runAlarm() });
+  }
+  if (pathname === '/__harness/create') {
+    const codes = [...(await request.json<{ codes: string[] }>()).codes];
+    return createRoom(env, () => codes.shift() ?? 'ÉPUISÉ');
+  }
+  const match = HARNESS_ROUTE.exec(pathname);
+  const name = match?.[1];
+  if (name === undefined) return production.fetch(withClientIp(request), env);
+  const stub = env.ROOMS.getByName(name);
+  if (match?.[2] === '/fetch') return stub.fetch(request);
+  if (match?.[2] === '/burst') {
+    const { count } = await request.json<{ count: number }>();
+    const hashes = await Promise.all(Array.from({ length: count }, () => hashResumeToken(generateResumeToken())));
+    const outcomes = await Promise.all(hashes.map((hash) => stub.join(hash)));
+    return Response.json(outcomes.map((outcome, index) => ({ ...outcome, tokenHash: hashes[index] })));
+  }
+  if (match?.[2] === '/alarm') {
+    const failed = request.method === 'POST' ? !(await stub.runAlarm()) : false;
+    return Response.json({ alarm: await stub.alarmAt(), failed });
+  }
+  if (match?.[2] === '/fail') {
+    await stub.failCommits((await request.json<{ commits: number }>()).commits);
+    return Response.json({ ok: true });
+  }
+  if (request.method === 'PUT') {
+    const next = await request.json<PersistedRoom>();
+    return Response.json(await stub.write(next));
+  }
+  return Response.json({ state: await stub.read() });
+}

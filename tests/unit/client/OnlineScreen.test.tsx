@@ -120,7 +120,8 @@ describe('PFC-015 — créer une partie', () => {
     [() => Promise.reject(new TypeError('Failed to fetch')), 'Connexion impossible : vérifiez votre réseau puis réessayez.'],
     [() => Promise.resolve(errorResponse(503, 'CODE_COLLISION')), 'Impossible de créer une partie pour le moment : réessayez.'],
     [() => Promise.resolve(errorResponse(500, 'INTERNAL')), 'Le serveur n’a pas pu répondre : réessayez dans un instant.'],
-  ])('PFC-015-AC3 — échec de création explicite, puis nouvel essai possible', async (reply, message) => {
+    [() => Promise.resolve(errorResponse(429, 'RATE_LIMITED')), 'Trop de tentatives : patientez une minute puis réessayez.'],
+  ])('PFC-015-AC3, PFC-020-AC1 — échec de création explicite, puis nouvel essai possible', async (reply, message) => {
     fetchMock.mockImplementationOnce(reply);
     renderOnline();
     fireEvent.click(button(/^Créer une partie/));
@@ -195,7 +196,8 @@ describe('PFC-015 — rejoindre une partie', () => {
   it.each([
     [404, 'ROOM_UNAVAILABLE', 'Cette partie n’existe pas ou n’est plus disponible.'],
     [409, 'ROOM_FULL', 'Cette partie est déjà complète.'],
-  ])('PFC-015-AC3 — %i : erreur explicite, code conservé pour corriger', async (status, code, message) => {
+    [429, 'RATE_LIMITED', 'Trop de tentatives : patientez une minute puis réessayez.'],
+  ])('PFC-015-AC3, PFC-020-AC1 — %i : erreur explicite, code conservé pour corriger', async (status, code, message) => {
     fetchMock.mockResolvedValueOnce(errorResponse(status, code));
     renderOnline();
     fireEvent.click(button(/^Rejoindre une partie/));

@@ -25,6 +25,8 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
   const paused = useRef(false);
   const regionRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
+  /** Élément focalisé avant l'entrée du focus dans la région : rendu à la fermeture (PFC-021). */
+  const origin = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -89,7 +91,9 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
   useEffect(() => {
     const region = regionRef.current;
     if (!region) return undefined;
-    const pause = () => {
+    const pause = (event: Event) => {
+      const previous = (event as FocusEvent).relatedTarget;
+      if (event.type === 'focusin' && previous instanceof HTMLElement && !region.contains(previous)) origin.current = previous;
       paused.current = true;
       for (const item of itemsRef.current) if (!item.leaving) clearTimer(item.id);
     };
@@ -119,6 +123,20 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
     };
   }, []);
 
+  // Fermer une notification au clavier ne laisse pas le focus sur un bouton qui disparaît (retour au <body>) :
+  // il revient à l'élément d'origine, sinon au titre de l'écran.
+  const close = useCallback(
+    (id: number) => {
+      const region = regionRef.current;
+      if (region?.contains(document.activeElement)) {
+        const back = origin.current?.isConnected ? origin.current : document.querySelector<HTMLElement>('[data-focus-target]');
+        back?.focus({ preventScroll: true });
+      }
+      dismiss(id);
+    },
+    [dismiss],
+  );
+
   const api = useMemo(() => ({ show }), [show]);
 
   return (
@@ -134,7 +152,7 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
               className="toast__close"
               aria-label="Fermer la notification"
               onClick={() => {
-                dismiss(item.id);
+                close(item.id);
               }}
             >
               ×

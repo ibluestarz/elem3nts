@@ -361,3 +361,33 @@ describe('PFC-017 — adversaire absent : partie en pause, décompte publié par
     expect(stored()).toBeNull();
   });
 });
+
+describe('PFC-021 — « Connexion interrompue » au clavier', () => {
+  it('Tab reste dans le dialogue, Échap ne quitte pas la room ; à la reprise le focus revient dans l’arène', async () => {
+    const socket = await hosting();
+    send(socket, 0, selecting());
+    send(socket, 0, paused());
+    const lost = screen.getByRole('alertdialog');
+    const retry = within(lost).getByRole('button', { name: 'Réessayer' });
+    const quit = within(lost).getByRole('button', { name: 'Quitter la partie' });
+    expect(retry).toHaveFocus();
+
+    quit.focus();
+    fireEvent.keyDown(quit, { key: 'Tab', code: 'Tab' });
+    expect(retry).toHaveFocus();
+    fireEvent.keyDown(retry, { key: 'Tab', code: 'Tab', shiftKey: true });
+    expect(quit).toHaveFocus();
+
+    fireEvent.keyDown(quit, { key: 'Escape', code: 'Escape' });
+    fireEvent.keyDown(quit, { key: ' ', code: 'Space' });
+    expect(socket.lastSent('leave')).toBeUndefined();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+
+    send(socket, 0, selecting({ deadline: serverNow() + 2000 }));
+    advance(0);
+    advance(300);
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: /^Arène/ }));
+  });
+});

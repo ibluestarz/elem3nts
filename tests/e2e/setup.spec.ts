@@ -42,8 +42,10 @@ test.describe('PFC-004 — accueil, règles et réglages', () => {
     await expect(draw).toHaveAttribute('aria-checked', 'false');
     await page.keyboard.press('Escape');
 
-    await expect(page.getByRole('heading', { name: 'Préparer le duel' })).toBeFocused();
+    // Focus rendu au bouton d'origine (PFC-021) ; Espace hors bouton lance la partie.
+    await expect(page.getByRole('button', { name: 'Modifier les touches' })).toBeFocused();
     await expect(page.getByText('Premier à 10 points')).toBeVisible();
+    await page.getByRole('heading', { name: 'Préparer le duel' }).focus();
     await page.keyboard.press('Space');
 
     await expect(page.getByText('Que le duel commence')).toBeVisible();

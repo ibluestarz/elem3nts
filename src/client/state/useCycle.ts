@@ -12,12 +12,13 @@ import type { GameAction } from './game.ts';
  * La minuterie se réarme donc tant que l'échéance n'est pas atteinte. Elle est posée dans le commit
  * même du rendu (`useLayoutEffect`) : une phase affichée a toujours son échéance planifiée.
  */
-export function useCycle(deadline: number | null, canSelect: boolean, dispatch: Dispatch<GameAction>): void {
+/** `hotseat` : la prochaine manche s'ouvre en tour par tour (un seul téléphone, PFC-025). */
+export function useCycle(deadline: number | null, hotseat: boolean, dispatch: Dispatch<GameAction>): void {
   useLayoutEffect(() => {
     if (deadline === null) return undefined;
     let timer = 0;
     const tick = () => {
-      dispatch({ type: 'tick', now: now(), canSelect });
+      dispatch({ type: 'tick', now: now(), hotseat });
     };
     const arm = () => {
       const remaining = deadline - now();
@@ -33,5 +34,5 @@ export function useCycle(deadline: number | null, canSelect: boolean, dispatch: 
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [deadline, canSelect, dispatch]);
+  }, [deadline, hotseat, dispatch]);
 }

@@ -449,7 +449,7 @@ describe('PFC-005 — clavier partagé et choix masqués', () => {
     expect(screen.getByText('Manche 1 · premier à 3')).toBeInTheDocument();
   });
 
-  it('sur téléphone, pas de sélection au clavier : l’indice tour par tour s’affiche', () => {
+  it('PFC-025 — sur téléphone, tour par tour : voile, choix au toucher, aucun élément avant la révélation', () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
     vi.useFakeTimers();
     renderStage();
@@ -459,8 +459,33 @@ describe('PFC-005 — clavier partagé et choix masqués', () => {
       vi.advanceTimersByTime(ARENA_BANNER_MS + SELECTION_DELAY_MS);
     });
 
-    expect(screen.getByText('Le mode tour par tour arrive bientôt.')).toBeVisible();
+    const gate1 = screen.getByRole('dialog', { name: 'Joueur 1, à vous' });
+    expect(gate1).toHaveAccessibleDescription('Joueur 2 détourne les yeux. Vous aurez 5 secondes pour toucher un élément.');
+    expect(within(gate1).getByText('Manche 1 · tour par tour')).toBeVisible();
+    expect(button('Je suis prêt')).toHaveFocus();
+    // Le clavier ne sélectionne pas en tour par tour.
     expect(hit('KeyA', 'q')).toBe(true);
+
+    fireEvent.click(button('Je suis prêt'));
+    expect(screen.getByText('Joueur 1 · touchez un élément')).toBeVisible();
+    const picks = screen.getByRole('group', { name: 'Votre élément' });
+    expect(within(picks).getAllByRole('button').map((node) => node.textContent)).toEqual(['Feu', 'Eau', 'Plante']);
+    expect([...document.querySelectorAll('.arena-m__status')].map((node) => node.textContent)).toEqual(['Choix en cours…', 'En attente']);
+
+    fireEvent.click(within(picks).getByRole('button', { name: 'Feu' }));
+    const gate2 = screen.getByRole('dialog', { name: 'Passez le téléphone à Joueur 2' });
+    expect(gate2).toHaveAccessibleDescription('Le choix de Joueur 1 est verrouillé et caché. Joueur 2 aura 5 secondes.');
+    expect(button('Joueur 2 — je suis prêt')).toHaveFocus();
+    // AC2 : le choix de Joueur 1 n'est nulle part dans le DOM avant la révélation.
+    expect(document.body.innerHTML).not.toMatch(/Feu|fire/);
+    expect([...document.querySelectorAll('.arena-m__status')].map((node) => node.textContent)).toEqual(['Choix verrouillé', 'En attente']);
+
+    fireEvent.click(button('Joueur 2 — je suis prêt'));
+    expect(screen.getByText('Joueur 2 · touchez un élément')).toBeVisible();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Votre élément' })).getByRole('button', { name: 'Eau' }));
+    // Le choix de Joueur 2 déclenche aussitôt la révélation.
+    expect(document.querySelector('.arena')).toHaveAttribute('data-phase', 'reveal');
+    expect([...document.querySelectorAll('.arena-m__status')].map((node) => node.textContent)).toEqual(['Feu', 'Eau']);
   });
 
   it('PFC-005-AC3 — retire tous ses écouteurs clavier au démontage (StrictMode)', () => {
@@ -807,5 +832,62 @@ describe('PFC-008-AC2 — repli sans 3D annoncé une seule fois', () => {
   ] as const)('cause %s : « %s »', (reason, message) => {
     render(<WithScene scene={sceneFallback(reason)} />);
     expect(screen.getByRole('status')).toHaveTextContent(message);
+  });
+});
+
+describe('PFC-021 — parcours clavier et focus', () => {
+  it('Espace sur l’accueil ouvre une nouvelle session, comme « Jouer en local » (D13)', () => {
+    vi.useFakeTimers();
+    renderStage();
+    startLocalAtOne();
+    playDecisiveRound(J1_WINS);
+    expect(trophies()).toEqual(['1', '0']);
+
+    escape();
+    (document.activeElement as HTMLElement).blur();
+    space();
+    expect(screen.getByRole('heading', { name: 'Préparer le duel' })).toHaveFocus();
+    fireEvent.click(button('Score cible 1'));
+    fireEvent.click(button(/^Commencer/));
+    playDecisiveRound(J2_WINS);
+    expect(trophies()).toEqual(['0', '1']);
+  });
+
+  it('fermer les réglages ouverts depuis la préparation rend le focus à « Modifier les touches »', () => {
+    renderStage();
+    toSetup();
+    fireEvent.click(button('Modifier les touches'));
+    expect(screen.getByRole('dialog', { name: 'Réglages' })).toBeInTheDocument();
+
+    escape();
+    expect(button('Modifier les touches')).toHaveFocus();
+    // Retour à l'accueil puis nouvelle préparation : le titre reprend le focus.
+    escape();
+    toSetup();
+  });
+
+  it('le verdict focalisé porte le nom du vainqueur en description', () => {
+    vi.useFakeTimers();
+    renderStage();
+    startLocalAtOne();
+    playDecisiveRound(J2_WINS);
+
+    const verdict = screen.getByRole('heading', { name: 'Victoire' });
+    expect(verdict).toHaveFocus();
+    expect(verdict).toHaveAccessibleDescription('Joueur 2 remporte la partie');
+  });
+
+  it('fermer au clavier une notification rend le focus à son origine, jamais au <body>', () => {
+    renderStage();
+    const origin = button('Démo des confrontations');
+    fireEvent.click(origin);
+    origin.focus();
+
+    const close = button('Fermer la notification');
+    act(() => {
+      close.focus();
+    });
+    fireEvent.click(close);
+    expect(origin).toHaveFocus();
   });
 });

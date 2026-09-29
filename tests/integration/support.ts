@@ -8,6 +8,9 @@ import { SECRETS, type StoredRoom } from '../unit/protocol/rooms.ts';
  * Runtime Workers local réel (workerd, via l'API de test de wrangler) sur le Worker de test
  * `harness/wrangler.jsonc` : Worker de production + accès à l'état durable des rooms.
  */
+/** En-tête du harnais qui impose l'adresse cliente d'une requête (`CF-Connecting-IP`, PFC-020). */
+export const CLIENT_IP_HEADER = 'x-harness-client-ip';
+
 export async function startHarness(): Promise<TestHarness> {
   const server = createTestHarness({
     root: import.meta.dirname,
@@ -146,14 +149,23 @@ export interface SocketProbe {
 
 /**
  * Ouvre `GET /api/rooms/:code/ws`. `origin` : en-tête `Origin` envoyé (celui du harnais par défaut,
- * comme un navigateur sur la page de l'application) ; `null` : aucun.
+ * comme un navigateur sur la page de l'application) ; `null` : aucun. `clientIp` : adresse cliente
+ * imposée au harnais (PFC-020) ; sinon une adresse neuve à chaque ouverture.
  */
-export async function openSocket(server: TestHarness, roomCode: string, origin?: string | null): Promise<SocketProbe> {
+export async function openSocket(
+  server: TestHarness,
+  roomCode: string,
+  origin?: string | null,
+  clientIp?: string,
+): Promise<SocketProbe> {
   const { url } = await server.listen();
   const target = new URL(`/api/rooms/${roomCode}/ws`, url);
   target.protocol = 'ws:';
   const sentOrigin = origin === undefined ? url.origin : origin;
-  const ws = new NodeWebSocket(target, sentOrigin === null ? {} : { headers: { origin: sentOrigin } });
+  const headers: Record<string, string> = {};
+  if (sentOrigin !== null) headers['origin'] = sentOrigin;
+  if (clientIp !== undefined) headers[CLIENT_IP_HEADER] = clientIp;
+  const ws = new NodeWebSocket(target, { headers });
   const raw: string[] = [];
   let read = 0;
   const waiters: (() => void)[] = [];
@@ -218,4 +230,30 @@ export async function closedWith(probe: SocketProbe): Promise<number> {
     }, SOCKET_WAIT_MS);
   });
   return (await Promise.race([probe.closed, timeout])).code;
+}
+
+/** Événement du journal structuré du Worker (`src/worker/log.ts`), relu depuis les journaux de workerd. */
+export type LogEntry = Readonly<Record<string, unknown>> & { readonly event: string };
+
+/**
+ * Événements structurés émis depuis le démarrage du harnais, dans l'ordre. En local, workerd écrit l'objet
+ * passé à `console.log` sous la forme de `util.inspect` (`{ event: 'x', revision: 3, match: null }`) ; les
+ * valeurs du journal (identifiants, codes, nombres, `null`) n'ont ni apostrophe ni accolade : la forme se
+ * convertit en JSON sans ambiguïté. Une ligne non structurée est ignorée.
+ */
+export function structuredLogs(server: TestHarness): LogEntry[] {
+  const entries: LogEntry[] = [];
+  for (const { message } of server.getLogs()) {
+    const text = message.trim();
+    if (!text.startsWith('{ event:') && !text.startsWith('{\n  event:')) continue;
+    const json = text.replace(/([{,]\s*)([A-Za-z]+):/g, '$1"$2":').replace(/'([^']*)'/g, '"$1"');
+    entries.push(JSON.parse(json) as LogEntry);
+  }
+  return entries;
+}
+
+/** Exécute l'alarme du limiteur d'une clé d'IP (`v4:…`, `v6:…::/64`) ; rend la suivante, `null` si effacé. */
+export async function runLimiterAlarm(server: TestHarness, key: string): Promise<number | null> {
+  const response = await server.fetch('/__harness/limiter', { method: 'POST', body: JSON.stringify({ key }) });
+  return ((await response.json()) as { alarm: number | null }).alarm;
 }

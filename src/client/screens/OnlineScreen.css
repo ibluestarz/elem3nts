@@ -609,11 +609,8 @@
 
 /* Sans mouvement : points et losange restent lisibles, sans animation. */
 @media (prefers-reduced-motion: reduce) {
-  .waiting__gem {
-    opacity: 1;
-  }
-
-  .dots > span {
+  :root:not([data-reduced-motion='false']) .waiting__gem,
+  :root:not([data-reduced-motion='false']) .dots > span {
     opacity: 1;
   }
 }

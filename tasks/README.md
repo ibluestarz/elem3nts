@@ -1,6 +1,6 @@
 # Backlog de développement
 
-23 tickets initiaux, puis PFC-024 et PFC-025 (règles de la maquette, D27) et PFC-026 (démo de la maquette, D29). Le champ **Statut dans chaque ticket** fait autorité ;
+23 tickets initiaux, puis PFC-024 et PFC-025 (règles de la maquette, D27), PFC-026 (démo de la maquette, D29) et PFC-027 (optimisation mesurée en PFC-021, D46). Le champ **Statut dans chaque ticket** fait autorité ;
 le tableau ci-dessous décrit l'ordre et les dépendances, sans recopier des statuts périssables.
 P0 indique un invariant ou une porte de livraison critique ; P1 reste requis pour le MVP.
 Le numéro donne un ordre conseillé ; seules les dépendances imposent l'ordre technique.
@@ -41,13 +41,14 @@ Le numéro donne un ordre conseillé ; seules les dépendances imposent l'ordre 
 | [PFC-017](done/PFC-017-reconnexion.md) | Déconnexion pause reprise et session | M2 | PFC-016 |
 | [PFC-018](done/PFC-018-expiration.md) | Expiration nettoyage et limites de session | M2 | PFC-017 |
 | [PFC-019](done/PFC-019-recette-reseau.md) | Recette multijoueur et tests adverses | M2 | PFC-018 |
-| [PFC-020](PFC-020-securite.md) | Durcissement abus et observabilité | M3 | PFC-019 |
-| [PFC-021](PFC-021-accessibilite-performance.md) | Accessibilité et performance de la version complète | M3 | PFC-009, PFC-019 |
+| [PFC-020](done/PFC-020-securite.md) | Durcissement abus et observabilité | M3 | PFC-019 |
+| [PFC-021](done/PFC-021-accessibilite-performance.md) | Accessibilité et performance de la version complète | M3 | PFC-009, PFC-019 |
 | [PFC-022](PFC-022-ci-staging.md) | CI reproductible et déploiement staging Cloudflare | M3 | PFC-020, PFC-021 |
 | [PFC-023](PFC-023-release.md) | Recette finale et mise en production | M3 | PFC-022 |
 | [PFC-024](done/PFC-024-regles-maquette.md) | Règles de manche de la maquette (5 s, choix unique, manche vide) | M1 | PFC-002, PFC-003 |
-| [PFC-025](PFC-025-local-mobile-tour-par-tour.md) | Local mobile tour par tour | M1 | PFC-006 |
+| [PFC-025](done/PFC-025-local-mobile-tour-par-tour.md) | Local mobile tour par tour | M1 | PFC-006 |
 | [PFC-026](PFC-026-demo-confrontations.md) | Démo des confrontations | M1 | PFC-008 |
+| [PFC-027](PFC-027-compilation-shaders.md) | Ouverture sans compilation bloquante des shaders (optimisation mesurée, D46) | M3 | PFC-008, PFC-021 |
 
 ## Reprise d'une session agent
 Lire le ticket in_progress s'il existe ; sinon le premier todo avec dépendances done.

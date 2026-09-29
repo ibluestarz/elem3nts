@@ -120,13 +120,14 @@ test.describe('PFC-005 — clavier partagé et choix masqués', () => {
     await expect(legend).toHaveText('AFeuSEauDPlante');
   });
 
-  test('PFC-005 — du téléphone au bureau : la sélection au clavier s’ouvre', async ({ page }) => {
+  test('PFC-005 — du téléphone au bureau avant l’ouverture de la manche : sélection au clavier (D47)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await page.getByRole('button', { name: 'Touchez pour jouer' }).click();
     await page.getByRole('button', { name: /^Commencer/ }).click();
-    await expect(page.getByText('Le mode tour par tour arrive bientôt.')).toBeVisible();
+    await expect(page.getByText('Que le duel commence')).toBeVisible();
 
+    // Le mode se décide à l'ouverture de la manche (D47) : au bureau à cet instant, elle est simultanée.
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.locator('.arena__status').first()).toHaveText(/Choix en cours…/);
     await page.keyboard.press('KeyD');

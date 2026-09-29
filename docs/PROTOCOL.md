@@ -14,8 +14,8 @@ Ne jamais accepter une troisième place, y compris lors d'arrivées concurrentes
 ### Entrée HTTP (PFC-012, D36)
 | Requête | Succès | Refus |
 | --- | --- | --- |
-| `POST /api/rooms` | `201 { roomCode, slot: 0, resumeToken }` | `503 CODE_COLLISION` (+ `Retry-After: 1`) après 5 codes déjà pris |
-| `POST /api/rooms/:code/join` | `200 { roomCode, slot: 1, resumeToken }` | `404 ROOM_UNAVAILABLE` (code mal formé, inconnu, expiré ou fermé) ; `409 ROOM_FULL` ; `503 ROOM_UNAVAILABLE` (état illisible) |
+| `POST /api/rooms` | `201 { roomCode, slot: 0, resumeToken }` | `503 CODE_COLLISION` (+ `Retry-After: 1`) après 5 codes déjà pris ; `403 ORIGIN_FORBIDDEN`, `429 RATE_LIMITED` (PFC-020) |
+| `POST /api/rooms/:code/join` | `200 { roomCode, slot: 1, resumeToken }` | `404 ROOM_UNAVAILABLE` (code mal formé, inconnu, expiré ou fermé) ; `409 ROOM_FULL` ; `503 ROOM_UNAVAILABLE` (état illisible) ; `403 ORIGIN_FORBIDDEN`, `429 RATE_LIMITED` (PFC-020) |
 
 - Aucun corps de requête n'est lu ; la réponse est validée côté client par `parseRoomEntry` (`src/shared/protocol`),
   clés exactes, code canonique, `slot` 0 ou 1, token 256 bits. Elle est `no-store` comme toute réponse de l'API.
@@ -33,7 +33,10 @@ reçue. `/api` et `/api/*` atteignent toujours le Worker avant les fichiers stat
 `404 NOT_FOUND`, jamais `index.html`. `503 ROOM_UNAVAILABLE` : état de room illisible ; `500 INTERNAL` : erreur
 inattendue. Les tickets suivants ajoutent leurs routes et codes (PFC-012 : `ROOM_FULL`, `CODE_COLLISION`,
 `METHOD_NOT_ALLOWED`, `404 ROOM_UNAVAILABLE` ; PFC-013 : `403 ORIGIN_FORBIDDEN`, `426 UPGRADE_REQUIRED`,
-`405 METHOD_NOT_ALLOWED` avec `Allow: GET` sur la route de socket ; PFC-020 : `RATE_LIMITED`).
+`405 METHOD_NOT_ALLOWED` avec `Allow: GET` sur la route de socket ; PFC-020 : `429 RATE_LIMITED` avec `Retry-After`,
+`403 ORIGIN_FORBIDDEN` sur create/join). Depuis PFC-020, toute réponse JSON porte aussi
+`content-security-policy: default-src 'none'; frame-ancestors 'none'`, `cross-origin-resource-policy: same-origin`,
+`referrer-policy: no-referrer` et `x-frame-options: DENY`.
 
 `GET /api/rooms/:code/ws` ouvre la socket ; premier message `authenticate` avec resumeToken
 sous 5 s, sinon fermeture sans donnée de room. Valider Origin contre une allowlist explicite.
@@ -150,6 +153,35 @@ Constantes partagées : `ROOM_IDLE_TIMEOUT_MS` = 30 min, `ROOM_MAX_DURATION_MS` 
 - Client : message lisible (« Partie fermée après 30 minutes sans activité : aucun trophée attribué. »,
   « … durée maximale de 4 heures atteinte, aucun trophée attribué. »), retour au menu en ligne, place oubliée ;
   notification persistante jusqu'à sa fermeture.
+
+### Abus, limites et en-têtes (PFC-020, D45)
+Constantes partagées (`src/shared/protocol/socket.ts`) : `RATE_WINDOW_MS` = 60 s, `ENTRY_RATE_LIMIT` = 10,
+`SOCKET_RATE_LIMIT` = 60, `MAX_PENDING_SOCKETS` = 2.
+
+| Garde | Portée | Dépassement |
+| --- | --- | --- |
+| Origine de `POST /api/rooms` et `/join` | `Origin` présent et ≠ origine du Worker, ou `Sec-Fetch-Site` présent et ≠ `same-origin` | `403 ORIGIN_FORBIDDEN`, avant la limite de débit et toute room |
+| Budget `entry` : créations **et** jonctions, communes | 10 tentatives admises par IP sur 60 s glissantes | `429 RATE_LIMITED` + `Retry-After` (s), sans room créée ni réservée |
+| Budget `socket` : ouvertures `GET /api/rooms/:code/ws` | 60 par IP sur 60 s glissantes, après méthode, upgrade, Origin et code | `429 RATE_LIMITED` avant toute room (le navigateur lit une fermeture 1006 ; la reprise bornée l'absorbe) |
+| Sockets non authentifiées d'une room | 2 au plus | une ouverture de plus ferme la plus ancienne en attente en **4408**, sans trame |
+
+- Clé d'IP : `CF-Connecting-IP` (posé par Cloudflare). IPv4 : l'adresse ; IPv4 dans IPv6 : la même clé ; IPv6 : le /64.
+  Absente ou illisible : un budget commun `unknown`. L'adresse n'est jamais journalisée ni renvoyée.
+- Fenêtre glissante exacte : une tentative est admise si moins de `limite` tentatives admises datent de moins de 60 s ;
+  une tentative d'exactement 60 s est sortie. Un refus (429) n'est pas compté ; `Retry-After` = secondes jusqu'à la
+  sortie de la plus ancienne (≥ 1). Toute jonction compte, réussie ou non : l'énumération de codes est bornée à 10/min/IP.
+- Une requête sans `Origin` ni `Sec-Fetch-Site` (client hors navigateur) n'est pas refusée : la limite s'applique seule.
+- Autorité : un Durable Object `Limiter` par clé, décision et écriture sans `await` (quota atomique en rafale). Limiteur
+  injoignable : la requête passe et `limiter.unavailable` est journalisé (le jeu reste jouable).
+- Sockets des joueurs : jamais comptées ni évincées par le plafond ; limites par connexion inchangées (PFC-013).
+- Pages et fichiers statiques (`public/_headers`) : `Content-Security-Policy: default-src 'self'; script-src 'self';
+  style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none';
+  form-action 'none'; frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
+  `X-Frame-Options: DENY`, `Cross-Origin-Opener-Policy: same-origin`, `Permissions-Policy` (caméra, micro,
+  géolocalisation, paiement, USB, topics désactivés), `Strict-Transport-Security: max-age=31536000`. `'self'` couvre la
+  socket ws/wss de même origine. Non appliqués par `npm run dev` (serveur Vite).
+- Client : `RATE_LIMITED` → « Trop de tentatives : patientez une minute puis réessayez. » (notification à la création,
+  erreur du formulaire à la jonction, code conservé).
 
 ## Enveloppe de commande authentifiée
 ```json
@@ -276,9 +308,9 @@ et l'attribution persistée par matchId empêchent toute double résolution/réc
 Les messages invalides ne modifient pas l'état ni les délais ; payload inconnu rejeté.
 Limiter les messages à 4 KiB et 20/s/connexion (burst 30). Après 3 dépassements consécutifs,
 fermer la connexion ; appliquer la politique de reconnexion sans récompense de forfait.
-Limiter create/join à 10/minute par IP au point d'entrée, avec mécanisme atomique partagé
-(binding rate limit adapté à l'offre ou Durable Object dédié), jamais un compteur global en mémoire Worker.
-Documenter portée et limites de ce rate limit dans PFC-020 ; vérifier la protection des upgrades aussi.
+Limiter create/join à 10/minute par IP au point d'entrée, avec mécanisme atomique partagé, jamais un compteur
+global en mémoire Worker : Durable Object `Limiter` par IP (PFC-020, D45 ; portée, upgrades et limites de l'offre :
+« Abus, limites et en-têtes » ci-dessus et `docs/RUNBOOK.md`).
 Codes : INVALID_MESSAGE, INVALID_SETTINGS, ROOM_UNAVAILABLE, ROOM_FULL, UNAUTHORIZED,
 NOT_HOST, INVALID_PHASE, STALE_ROUND, STALE_SETTINGS, CHOICE_LOCKED, RATE_LIMITED, VERSION_UNSUPPORTED.
 Pas de stack trace ou contenu sensible envoyé au client.
@@ -286,6 +318,12 @@ Pas de stack trace ou contenu sensible envoyé au client.
 ## Journalisation et nettoyage
 Logs structurés : type d'événement, identifiant technique de room non secret, matchId, roundId,
 revision, code d'erreur et durée. Aucun choix avant révélation, token ou corps complet de message.
+PFC-020 (`src/worker/log.ts`, D45) : un objet JSON par événement via `console.log`, reconstruit par allowlist de
+champs : `event`, `room` (identifiant hexadécimal du Durable Object, jamais le code, qui vaut invitation), `phase`,
+`match`, `round`, `revision`, `slot`, `code`, `close`, `by` (`server`/`client`), `command` (type seul), `bucket`,
+`reason`, `durationMs`, `error` (nom de l'erreur, et code d'une erreur de stockage ; jamais son message ni sa pile).
+Jamais : token, empreinte, `requestId` (choisi par le client), charge, choix, IP. Événements et exploitation :
+`docs/RUNBOOK.md`.
 Activité utile = commande valide qui modifie l'état, ou première connexion d'une place (D43) ; ping, tentatives
 rejetées et reprises de place ne prolongent rien.
 À fermeture : annuler alarme, fermer sockets, supprimer état sensible ; conserver au plus une tombstone

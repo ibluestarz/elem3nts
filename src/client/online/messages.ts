@@ -20,11 +20,14 @@ export const CODE_INPUT_MESSAGES: Readonly<Record<CodeInputError, string>> = {
 
 const NETWORK = 'Connexion impossible : vérifiez votre réseau puis réessayez.';
 const SERVER = 'Le serveur n’a pas pu répondre : réessayez dans un instant.';
+/** Limite de débit par adresse (PFC-020) : même texte que le serveur, la limite se lève en une minute au plus. */
+const RATE_LIMITED = 'Trop de tentatives : patientez une minute puis réessayez.';
 
 export const JOIN_FAILURES: Readonly<Record<EntryFailure, string>> = {
   ROOM_UNAVAILABLE: ERROR_MESSAGES.ROOM_UNAVAILABLE,
   ROOM_FULL: ERROR_MESSAGES.ROOM_FULL,
   CODE_COLLISION: SERVER,
+  RATE_LIMITED,
   network: NETWORK,
   server: SERVER,
 };
@@ -33,6 +36,7 @@ export const CREATE_FAILURES: Readonly<Record<EntryFailure, string>> = {
   ROOM_UNAVAILABLE: SERVER,
   ROOM_FULL: SERVER,
   CODE_COLLISION: 'Impossible de créer une partie pour le moment : réessayez.',
+  RATE_LIMITED,
   network: NETWORK,
   server: SERVER,
 };

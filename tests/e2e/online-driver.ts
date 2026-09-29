@@ -1,6 +1,6 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { parseRoomEntry, parseServerMessage, type PublicState } from '../../src/shared/protocol/index.ts';
-import { stubScene, trackProblems } from './support.ts';
+import { isolatedContext, stubScene, trackProblems } from './support.ts';
 
 /**
  * Joueurs en ligne contre le Worker local réel (workerd) : contextes de navigateur indépendants, vraies
@@ -45,7 +45,7 @@ const OBSERVE_CLIPBOARD = () => {
 const text = (payload: string | Buffer) => (typeof payload === 'string' ? payload : payload.toString('utf8'));
 
 export async function player(browser: Browser, viewport = { width: 1280, height: 800 }, realClipboard = false): Promise<Player> {
-  const context = await browser.newContext({ viewport, locale: 'fr-FR' });
+  const context = await isolatedContext(browser, { viewport, locale: 'fr-FR' });
   if (realClipboard) await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const page = await context.newPage();
   await stubScene(page);

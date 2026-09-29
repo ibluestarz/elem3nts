@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "verify": "npm run build && npm run test:functional && npm run lint && npm run test:e2e",
     "baseline:mockup": "node scripts/capture-mockup-baseline.ts",
-    "port:engine": "node scripts/port-engine.ts"
+    "port:engine": "node scripts/port-engine.ts",
+    "measure:scene": "node scripts/measure-scene.ts",
+    "measure:load": "node scripts/measure-load.ts"
   },
   "browserslist": [
     "defaults and fully supports es6-module",
@@ -29,6 +31,7 @@
     "three": "0.160.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@cloudflare/vite-plugin": "1.62.0",
     "@cloudflare/workers-types": "5.20260928.1",
     "@eslint/js": "10.0.1",

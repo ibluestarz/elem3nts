@@ -74,8 +74,8 @@ describe('PFC-004-AC3 — réglages figés pendant la partie', () => {
 
 /** Début de la sélection : ouverture 1,8 s puis 0,4 s (maquette). */
 const SELECT_AT = CYCLE_MS.banner + CYCLE_MS.ready;
-const tick = (now: number, canSelect = true): GameAction => ({ type: 'tick', now, canSelect });
-const choose = (player: 0 | 1, element: 'fire' | 'water' | 'plant'): GameAction => ({ type: 'choose', player, element });
+const tick = (now: number, hotseat = false): GameAction => ({ type: 'tick', now, hotseat });
+const choose = (player: 0 | 1, element: 'fire' | 'water' | 'plant', now = 0): GameAction => ({ type: 'choose', player, element, now });
 
 function selectingState(options: { target?: number; drawEnabled?: boolean } = {}): GameState {
   return run(
@@ -192,16 +192,6 @@ describe('PFC-006-AC2 — saisie et enchaînement', () => {
     }
   });
 
-  it('sur téléphone (sans saisie), la partie attend avant la sélection puis reprend au bureau', () => {
-    const ready = run({ type: 'start', drawEnabled: true, now: 0 }, tick(CYCLE_MS.banner));
-    const waiting = gameReducer(ready, tick(SELECT_AT + 10_000, false));
-    expect(waiting).toBe(ready);
-    expect(gameReducer(waiting, tick(SELECT_AT + 10_000, true))).toMatchObject({
-      phase: 'selecting',
-      deadline: SELECT_AT + 10_000 + CYCLE_MS.selection,
-    });
-  });
-
   it('mort subite : égalité au-delà de X avec nul OFF, bannière puis manche suivante', () => {
     const fireFire = [choose(0, 'fire'), choose(1, 'fire')].reduce(gameReducer, selectingState({ target: 1, drawEnabled: false }));
     const sudden = advanceTo(fireFire, 'sudden');
@@ -271,5 +261,98 @@ describe('PFC-007 — revanche et session', () => {
     expect(trophiesWon(won)).toEqual([true, false]);
     expect(trophiesWon(drawn)).toEqual([true, true]);
     expect(trophiesWon({ ...won, result: { status: 'cancelled' } })).toEqual([false, false]);
+  });
+});
+
+describe('PFC-025 — tour par tour sur un seul téléphone', () => {
+  /** Voile de Joueur 1 de la première manche, ouverte en tour par tour. */
+  const gateState = (target = 3): GameState =>
+    run({ type: 'target', value: target }, { type: 'start', drawEnabled: true, now: 0 }, tick(CYCLE_MS.banner, true), tick(SELECT_AT, true));
+  const ready = (now: number): GameAction => ({ type: 'turn-ready', now });
+
+  it('la manche s’ouvre sur le voile de Joueur 1, sans échéance : rien ne presse le passage de l’appareil', () => {
+    const gate = gateState();
+    expect(gate).toMatchObject({ phase: 'gate', turn: 0, round: 1, deadline: null, selection: [null, null] });
+    expect(gameReducer(gate, tick(SELECT_AT + 60_000, true))).toBe(gate);
+    expect(gameReducer(gate, choose(0, 'fire'))).toBe(gate);
+  });
+
+  it('PFC-025-S1 — J1 prêt puis Feu : voile de Joueur 2, choix gardé mais jamais révélé', () => {
+    const selecting = gameReducer(gateState(), ready(3000));
+    expect(selecting).toMatchObject({ phase: 'selecting', turn: 0, deadline: 3000 + CYCLE_MS.selection });
+    // Seul le joueur dont c'est le tour choisit.
+    expect(gameReducer(selecting, choose(1, 'water', 3100))).toBe(selecting);
+
+    const handedOver = gameReducer(selecting, choose(0, 'fire', 3500));
+    expect(handedOver).toMatchObject({ phase: 'gate', turn: 1, deadline: null, selection: ['fire', null], revealed: null, play: null });
+    expect(handedOver.match?.scores).toEqual([0, 0]);
+  });
+
+  it('AC1 — J2 a 5 s après son « prêt » ; son choix déclenche une seule révélation, aussitôt', () => {
+    const gate2 = [ready(3000), choose(0, 'fire', 3500)].reduce(gameReducer, gateState());
+    const turn2 = gameReducer(gate2, ready(9000));
+    expect(turn2).toMatchObject({ phase: 'selecting', turn: 1, deadline: 9000 + CYCLE_MS.selection });
+    expect(gameReducer(turn2, choose(0, 'plant', 9100))).toBe(turn2);
+
+    const reveal = gameReducer(turn2, choose(1, 'water', 9400));
+    expect(reveal).toMatchObject({ phase: 'reveal', revealed: ['fire', 'water'], deadline: 9400 + CYCLE_MS.reveal });
+    expect(reveal.match?.scores).toEqual([0, 1]);
+    // Plus aucune saisie ni seconde résolution : l'échéance de sélection dépassée ne rejoue rien.
+    expect(gameReducer(reveal, choose(1, 'fire', 9500))).toBe(reveal);
+    expect(advanceTo(reveal, 'result').match?.scores).toEqual([0, 1]);
+  });
+
+  it('PFC-025-S2 — J1 hors délai, J2 choisit Eau : R11, +1 pour Joueur 2', () => {
+    const turn1 = gameReducer(gateState(), ready(3000));
+    const late = gameReducer(turn1, tick(3000 + CYCLE_MS.selection, true));
+    expect(late).toMatchObject({ phase: 'gate', turn: 1, selection: [null, null] });
+
+    const reveal = [ready(12_000), choose(1, 'water', 12_300)].reduce(gameReducer, late);
+    expect(reveal).toMatchObject({ phase: 'reveal', revealed: [null, 'water'] });
+    expect(reveal.play?.round).toMatchObject({ kind: 'solo', winner: 1 });
+    expect(reveal.match?.scores).toEqual([0, 1]);
+  });
+
+  it('J2 hors délai : la révélation part de son échéance (R11 pour Joueur 1, ou manche vide R12)', () => {
+    const turn2 = [ready(3000), choose(0, 'plant', 3200), ready(4000)].reduce(gameReducer, gateState());
+    const reveal = gameReducer(turn2, tick(4000 + CYCLE_MS.selection, true));
+    expect(reveal).toMatchObject({ phase: 'reveal', revealed: ['plant', null] });
+    expect(reveal.match?.scores).toEqual([1, 0]);
+
+    const empty = [ready(3000), tick(3000 + CYCLE_MS.selection, true), ready(9000), tick(9000 + CYCLE_MS.selection, true)].reduce(
+      gameReducer,
+      gateState(),
+    );
+    expect(empty.play?.round.kind).toBe('void');
+    expect(empty.match?.scores).toEqual([0, 0]);
+  });
+
+  it('« prêt » hors voile ou répété : sans effet', () => {
+    const turn1 = gameReducer(gateState(), ready(3000));
+    expect(gameReducer(turn1, ready(3100))).toBe(turn1);
+    const idle = initialGameState();
+    expect(gameReducer(idle, ready(0))).toBe(idle);
+  });
+
+  it('la manche suivante rouvre le voile de Joueur 1', () => {
+    const reveal = [ready(3000), choose(0, 'fire', 3100), ready(4000), choose(1, 'plant', 4100)].reduce(gameReducer, gateState());
+    let state = reveal;
+    for (let guard = 0; state.phase !== 'gate' && guard < 10; guard++) state = gameReducer(state, tick(state.deadline ?? 0, true));
+    expect(state).toMatchObject({ phase: 'gate', turn: 0, round: 2, selection: [null, null], revealed: null });
+  });
+
+  it('AC3 — le mode est fixé à l’ouverture de la manche : un redimensionnement ne le change qu’à la suivante', () => {
+    // Manche simultanée ouverte au bureau, puis passage au téléphone : elle se termine en simultané.
+    const simultaneous = [choose(0, 'fire'), choose(1, 'plant')].reduce(gameReducer, selectingState());
+    expect(simultaneous.turn).toBeNull();
+    const resolved = gameReducer(simultaneous, tick(SELECT_AT + CYCLE_MS.selection, true));
+    expect(resolved).toMatchObject({ phase: 'reveal', revealed: ['fire', 'plant'] });
+    let next = resolved;
+    for (let guard = 0; next.phase !== 'gate' && guard < 10; guard++) next = gameReducer(next, tick(next.deadline ?? 0, true));
+    expect(next).toMatchObject({ phase: 'gate', turn: 0, round: 2 });
+
+    // Manche en tour par tour, puis passage au bureau : le tour de Joueur 1 mène toujours au voile de Joueur 2.
+    const turn1 = gameReducer(gateState(), ready(3000));
+    expect(gameReducer(turn1, tick(3000 + CYCLE_MS.selection, false))).toMatchObject({ phase: 'gate', turn: 1 });
   });
 });

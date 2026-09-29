@@ -51,9 +51,11 @@ async function prepareByKeyboard(page: Page, bound: 'Home' | 'End'): Promise<voi
   await expect(draw).toHaveAttribute('aria-checked', 'false');
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
-  await expect(setupHeading(page)).toBeFocused();
+  // Focus rendu au bouton d'origine (PFC-021) : Espace l'activerait ; « Commencer » est atteint au clavier.
+  await expect(page.getByRole('button', { name: 'Modifier les touches' })).toBeFocused();
   await expect(page.getByText(`Premier à ${String(target)} point`)).toBeVisible();
 
+  await tabTo(page, page.getByRole('button', { name: /^Commencer/ }));
   await page.keyboard.press('Space');
   await expect(arenaHeading(page, 1, target)).toBeFocused();
 }

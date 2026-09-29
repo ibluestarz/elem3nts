@@ -53,10 +53,11 @@ a:hover {
   scroll-behavior: auto !important;
 }
 
+/* Préférence système, sauf si l'appareil a choisi d'animer (`data-reduced-motion='false'`, PFC-021). */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-reduced-motion='false']) *,
+  :root:not([data-reduced-motion='false']) *::before,
+  :root:not([data-reduced-motion='false']) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

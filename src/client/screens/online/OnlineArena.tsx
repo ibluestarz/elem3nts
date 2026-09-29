@@ -1,8 +1,8 @@
 import { ELEMENTS, type Element } from '../../../domain/index.ts';
+import { ElementPicks } from '../../components/ElementPicks.tsx';
 import { Keycap } from '../../components/Keycap.tsx';
 import { ELEMENT_NAMES, PLAYER_NAMES } from '../../input/keys.ts';
 import { opponentOf } from '../../online/game.ts';
-import { useScene } from '../../scene/sceneContext.ts';
 import { ArenaFrame } from '../ArenaFrame.tsx';
 import type { ArenaModel } from '../arenaModel.ts';
 import './OnlineArena.css';
@@ -32,64 +32,10 @@ interface OnlineArenaProps {
  */
 export function OnlineArena(props: OnlineArenaProps) {
   const { compact, model, slot, opponentConnected, pick, latency, keyLabels, matchId, onChoose, onQuit } = props;
-  const scene = useScene();
   const selecting = model.phase === 'selecting';
   const locked = model.statuses[0].tone === 'locked';
 
-  const tap = (element: Element) => () => {
-    onChoose(element);
-  };
-  const tapClass = (base: string, element: Element) =>
-    [base, locked && `${base}--locked`, pick === element && `${base}--chosen`].filter(Boolean).join(' ');
-
-  // Zones posées sur les éléments 3D quand la scène les situe ; sinon (repli D33, scène pas encore
-  // mesurée) rangée de boutons : un choix au pointeur reste toujours possible.
-  const onScene = scene.status === 'ready' && scene.trinity.length > 0;
-  const picks =
-    selecting &&
-    (onScene ? (
-      scene.trinity.map((point, index) => {
-        const element = ELEMENTS[index];
-        if (!element) return null;
-        return (
-          <button
-            key={element}
-            type="button"
-            className={tapClass('arena-tap', element)}
-            style={{
-              left: `${String(point.x - point.r)}px`,
-              top: `${String(point.y - point.r)}px`,
-              width: `${String(point.r * 2)}px`,
-              height: `${String(point.r * 2)}px`,
-            }}
-            aria-pressed={pick === element}
-            aria-disabled={locked}
-            aria-keyshortcuts={keyLabels[element]}
-            onClick={tap(element)}
-          >
-            <span className="arena-tap__name">{ELEMENT_NAMES[element]}</span>
-          </button>
-        );
-      })
-    ) : (
-      <div className={compact ? 'arena-picks arena-picks--compact' : 'arena-picks'} role="group" aria-label="Votre élément">
-        {ELEMENTS.map((element) => (
-          <button
-            key={element}
-            type="button"
-            className={tapClass('arena-pick', element)}
-            aria-pressed={pick === element}
-            aria-disabled={locked}
-            aria-keyshortcuts={keyLabels[element]}
-            onClick={tap(element)}
-          >
-            <span className={`arena-pick__gem arena-pick__gem--${element}`} aria-hidden="true" />
-            <span className="arena-pick__name">{ELEMENT_NAMES[element]}</span>
-            {!compact && <span className="arena-pick__key">{keyLabels[element] ?? ''}</span>}
-          </button>
-        ))}
-      </div>
-    ));
+  const picks = selecting && <ElementPicks compact={compact} locked={locked} pick={pick} keyLabels={keyLabels} onChoose={onChoose} />;
 
   const opponent = PLAYER_NAMES[opponentOf(slot)];
   return (
