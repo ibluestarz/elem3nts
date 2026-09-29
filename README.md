@@ -36,7 +36,8 @@ ni hook exécutant automatiquement des commandes n'est fourni.
 | `docs/PROTOCOL.md` | Contrat réseau et sécurité |
 | `docs/TESTING.md` | Gates, commandes et Definition of Done |
 | `docs/TRACEABILITY.md` | Correspondance besoins → tickets → tests |
-| `docs/RUNBOOK.md` | Exploitation : journaux, limites anti-abus, incidents, offre Cloudflare |
+| `docs/RUNBOOK.md` | Exploitation : journaux, limites anti-abus, incidents, offre Cloudflare, déploiement et retour arrière |
+| `.github/workflows/ci.yml` | CI : gates dans l'ordre, staging publié à la demande puis smoke (PFC-022) |
 | `docs/SOURCES.md` | Documentation officielle consultée |
 | `tasks/README.md` | Ordre, dépendances et méthode |
 | `tasks/PFC-*.md` | Tickets avec critères, Gherkin et DoD |

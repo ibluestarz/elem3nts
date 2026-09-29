@@ -26,6 +26,19 @@ Les chemins front rechargés doivent servir la SPA. Isoler staging et production
 bindings, migrations et secrets. Configurer la migration initiale du Durable Object.
 Pas de serveur Express ni de runtime Node permanent pour les sockets.
 
+### Environnements, CI et livraison (PFC-022, D48)
+- `wrangler.jsonc` : racine = production (Worker `elem3nts`) ; `env.staging` = Worker `elem3nts-staging`
+  (https://elem3nts-staging.elem3nts.workers.dev), donc namespaces Durable Object et stockage distincts. Liaisons et
+  migrations, non héritées par un environnement, y sont répétées ; `tests/integration/config.test.ts` impose l'égalité.
+  Aucune variable ni secret côté Worker : seul le déploiement demande un accès Cloudflare.
+- L'environnement se choisit **au build** (`CLOUDFLARE_ENV`, plugin Vite) : `dist/elem3nts/wrangler.json` est aplati
+  pour sa cible. L'artefact vérifié est donc propre à une cible ; `scripts/deploy.ts` (`npm run deploy:*`) le publie tel
+  quel (`wrangler deploy --config dist/elem3nts/wrangler.json --strict`), refuse celui d'une autre cible et étiquette
+  la version avec le commit.
+- `.github/workflows/ci.yml` : job `verify` (`CLOUDFLARE_ENV=staging`, `npm ci` puis les quatre gates dans l'ordre),
+  artefact `dist/` conservé 7 jours ; job `deploy-staging` à la demande seulement (`workflow_dispatch`, depuis `main`),
+  après `verify`, sans rebuild, puis smoke deux joueurs (`tests/smoke/`). La production n'est jamais publiée par la CI.
+
 ## État et atomicité
 Une room est l'autorité unique pour deux places. Réserver les places atomiquement.
 Persister après transition : session/room, matchId, roundId, revision, phase, settings,

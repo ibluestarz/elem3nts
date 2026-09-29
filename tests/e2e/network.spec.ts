@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join as joinPath } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { artifactProblem, targetForEnvironment } from '../../scripts/deploy-target.ts';
 import { parseServerMessage, type PublicState } from '../../src/shared/protocol/index.ts';
 import { hudStatus, join, player, startDuel, toSelection, type Player } from './online-driver.ts';
 
@@ -181,7 +182,11 @@ function files(dir: string): string[] {
 test.describe('PFC-019-AC3 — aucune route de triche dans le build de production', () => {
   test('le build servi (client et Worker, cartes de source comprises) ne contient aucun code du harnais', () => {
     const worker = JSON.parse(readFileSync('dist/elem3nts/wrangler.json', 'utf8')) as { main: string; name: string };
-    expect(worker).toMatchObject({ main: 'index.js', name: 'elem3nts' });
+    // Worker de la cible construite (production, ou staging en CI : `CLOUDFLARE_ENV`, D48), jamais le harnais.
+    const target = targetForEnvironment(process.env['CLOUDFLARE_ENV']);
+    if (target === null) throw new Error('CLOUDFLARE_ENV ne désigne aucune cible de déploiement.');
+    expect(worker.main).toBe('index.js');
+    expect(artifactProblem(worker, target)).toBeNull();
     const built = [...files('dist/client'), ...files('dist/elem3nts')].filter((path) => /\.(js|map|html|json)$/.test(path));
     expect(built.some((path) => path.endsWith('.js') && path.includes('client'))).toBe(true);
     for (const path of built) {

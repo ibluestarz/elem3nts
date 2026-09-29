@@ -12,10 +12,12 @@
     "vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
+    "playwright.smoke.config.ts",
     "eslint.config.js",
     "postcss.config.js",
     "scripts",
     "tests/e2e",
+    "tests/smoke",
     "tests/integration"
   ],
   "exclude": ["tests/integration/harness"]

@@ -103,7 +103,8 @@ test.describe('PFC-015 — interface créer rejoindre et lobby synchronisé', ()
     const j2 = await player(browser);
     await j2.page.goto(`/p/${code}`);
     await expect(j2.page.getByLabel('Code reçu')).toHaveValue(`${code.slice(0, 4)}·${code.slice(4)}`);
-    expect(new URL(j2.page.url()).pathname).toBe('/');
+    // Retirée par un effet, donc après l'affichage du code prérempli : assertion qui attend.
+    await expect.poll(() => new URL(j2.page.url()).pathname).toBe('/');
     await j2.page.getByRole('button', { name: 'Rejoindre', exact: true }).click();
     await expect(lobbyTitle(j2.page)).toBeVisible();
     await Promise.all([j1.context.close(), j2.context.close()]);

@@ -30,7 +30,9 @@ aucune commande no-op ni `passWithNoTests` pour donner l'apparence d'un gate ré
 | npm run port:engine | Outil hors gate : régénère `src/client/scene/engine.js` depuis la maquette (D33) ; un test de dérive échoue si le fichier diffère | — |
 | npm run measure:scene | Outil hors gate (PFC-021, D46) : temps d'image et éclairs de la vraie scène sur le GPU du poste (Chromium avec fenêtre, serveur de développement lancé par le script, sonde `?perf`) | — |
 | npm run measure:load | Outil hors gate (PFC-021, D46) : ouverture à froid et visite suivante sous profil mobile Lighthouse, contre `npm run preview` déjà lancé ; `RUNS=9` pour plus de passages | — |
-| npm run deploy:* | Non créées | PFC-022 / PFC-023 |
+| npm run deploy:staging | `node scripts/deploy.ts staging` (PFC-022) : publie `dist/` **déjà vérifié** sans rebuild ; refuse un artefact non construit avec `CLOUDFLARE_ENV=staging` ; version étiquetée par le commit ; accès `wrangler login` ou `CLOUDFLARE_API_TOKEN` | — |
+| npm run deploy:production | `node scripts/deploy.ts production` : même garde, artefact construit sans `CLOUDFLARE_ENV`, arbre git non modifié exigé ; jamais lancé par la CI | Publication : PFC-023 |
+| npm run test:smoke | Hors gate (PFC-022) : Playwright Chromium contre un Worker déployé (`SMOKE_URL`, HTTPS exigé hors machine locale), `tests/smoke/` : deux clients, lien d'invitation (repli SPA), WSS, reprise après rechargement, fin de partie, trophée, revanche, en-têtes, API JSON 404 ; échoue sans `SMOKE_URL` | — |
 
 Prérequis E2E sur une machine neuve : `npx playwright install chromium firefox webkit`, puis
 `sudo npx playwright install-deps chromium firefox webkit` (dépendances système Linux/WSL).
@@ -349,6 +351,21 @@ elles ne constituent pas une fuite adverse.
 - [ ] États loading/erreur et accessibilité traités pour les interactions ajoutées.
 - [ ] SPEC/contrat réseau/tickets dépendants mis à jour si nécessaire.
 - [ ] Diff relu ; limites restantes explicites ; statut reflète les preuves, pas l'intention.
+
+## CI et staging (PFC-022, D48)
+`.github/workflows/ci.yml` : sur push `main` et pull request, job `verify` = clone propre, `npm ci`, navigateurs
+Playwright avec dépendances, puis `build` → `test:functional` → `lint` → `test:e2e` (étapes distinctes, arrêt au premier
+échec), avec `CLOUDFLARE_ENV=staging`. Succès : artefact `dist-staging` (7 jours). Échec : rapport et traces Playwright
+(7 jours ; seuls des tokens de rooms éphémères du workerd local). Staging : **Run workflow** avec `deploy_staging`
+depuis `main` → job `deploy-staging` (après `verify` vert) : publication de l'artefact téléchargé, puis `npm run test:smoke`
+contre https://elem3nts-staging.elem3nts.workers.dev. Contrat vérifié dans le gate par `tests/tooling/ci.test.ts`.
+Équivalent local : `CLOUDFLARE_ENV=staging npm run verify && npm run deploy:staging && SMOKE_URL=<url> npm run test:smoke`.
+Un `npm run verify` sans `CLOUDFLARE_ENV` construit l'artefact de production : `deploy:staging` le refuse.
+Le gate doit passer avec et sans `CLOUDFLARE_ENV` : wrangler lit cette variable par défaut (y compris
+`unstable_readConfig`) ; un test qui lit la configuration d'un environnement précis la neutralise (`config.test.ts`,
+écart trouvé par la copie propre de PFC-022).
+Fins de ligne : `.gitattributes` impose LF à l'extraction (`* text=auto eol=lf`) ; sans lui, un clone sur un poste en
+`core.autocrlf=true` (cas du poste du propriétaire) sortait en CRLF et faisait échouer `config.test.ts` et `engine-port.test.ts`.
 
 ## Release
 Clone propre → npm ci → installation des navigateurs Playwright avec dépendances → verify.

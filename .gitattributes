@@ -1,0 +1,3 @@
+# Fins de ligne LF dans l'arbre de travail, quel que soit `core.autocrlf` du poste (PFC-022, D48) : des tests lisent
+# des fichiers ligne à ligne ou octet pour octet (.gitignore, moteur porté) ; un clone en CRLF ferait échouer le gate.
+* text=auto eol=lf

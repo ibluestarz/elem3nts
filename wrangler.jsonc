@@ -1,6 +1,8 @@
 // Worker ELEM3NTS : API /api/* et fichiers statiques Vite sur une seule origine, un Durable Object SQLite par room
 // (ARCHITECTURE « Hébergement », DECISIONS D20 et D35). Aucun secret ni variable ici : les secrets passent par
-// `wrangler secret` ou `.dev.vars` (ignoré par git). Environnements staging et production : PFC-022.
+// `wrangler secret` ou `.dev.vars` (ignoré par git). Racine = production (`elem3nts`) ; `env.staging` = Worker distinct,
+// donc Durable Objects et stockage distincts (PFC-022, D48). L'environnement se choisit au build (`CLOUDFLARE_ENV`) :
+// `dist/elem3nts/wrangler.json` est propre à sa cible et `npm run deploy:*` refuse un artefact d'une autre cible.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "elem3nts",
@@ -28,5 +30,26 @@
     { "tag": "v2", "new_sqlite_classes": ["Limiter"] }
   ],
   // Workers Logs : journaux structurés du Worker (log.ts), tous conservés (docs/RUNBOOK.md pour les quotas).
-  "observability": { "enabled": true, "head_sampling_rate": 1 }
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "env": {
+    // https://elem3nts-staging.elem3nts.workers.dev. Clés non héritées par un environnement (liaisons, migrations)
+    // répétées à l'identique ; un test vérifie qu'elles ne divergent jamais de la production.
+    "staging": {
+      "name": "elem3nts-staging",
+      "workers_dev": true,
+      // Pas d'URL par version : seule l'adresse staging sert le jeu (une version non promue resterait joignable).
+      "preview_urls": false,
+      "durable_objects": {
+        "bindings": [
+          { "name": "ROOMS", "class_name": "Room" },
+          { "name": "LIMITER", "class_name": "Limiter" }
+        ]
+      },
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["Room"] },
+        { "tag": "v2", "new_sqlite_classes": ["Limiter"] }
+      ],
+      "observability": { "enabled": true, "head_sampling_rate": 1 }
+    }
+  }
 }

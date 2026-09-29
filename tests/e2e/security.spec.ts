@@ -49,7 +49,9 @@ test.describe('PFC-020-AC3 — en-têtes de sécurité et CSP', () => {
   test('PFC-020-AC3 — accueil, repli SPA d’une invitation, fichier du build et icône portent les en-têtes', async ({ page, request }) => {
     const home = await page.goto('/');
     expect(home?.headers()).toMatchObject(PAGE_HEADERS);
-    const script = await page.locator('script[type="module"]').getAttribute('src');
+    // Script d'entrée lu dans la réponse HTTP, pas dans le DOM : la scène 3D réelle (non bouchonnée ici) peut bloquer
+    // le fil principal du rendu logiciel plus de 30 s pendant la compilation des shaders sous charge (PFC-027).
+    const script = /<script type="module"[^>]* src="([^"]+)"/.exec((await home?.text()) ?? '')?.[1];
     expect(script).toMatch(/^\/assets\//);
 
     for (const path of ['/p/K7M2Q9XA', script ?? '', '/favicon.svg']) {

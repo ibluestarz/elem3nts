@@ -45,7 +45,14 @@ const OBSERVE_CLIPBOARD = () => {
 const text = (payload: string | Buffer) => (typeof payload === 'string' ? payload : payload.toString('utf8'));
 
 export async function player(browser: Browser, viewport = { width: 1280, height: 800 }, realClipboard = false): Promise<Player> {
-  const context = await isolatedContext(browser, { viewport, locale: 'fr-FR' });
+  return playerIn(await isolatedContext(browser, { viewport, locale: 'fr-FR' }), realClipboard);
+}
+
+/**
+ * Joueur dans un contexte fourni. Contre un Worker déployé (smoke staging, PFC-022), le contexte n'usurpe pas
+ * `CF-Connecting-IP` : Cloudflare pose l'adresse réelle et les limites par IP s'appliquent pour de vrai.
+ */
+export async function playerIn(context: BrowserContext, realClipboard = false): Promise<Player> {
   if (realClipboard) await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const page = await context.newPage();
   await stubScene(page);

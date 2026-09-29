@@ -1,4 +1,4 @@
-# Runbook — abus, journaux et limites (PFC-020)
+# Runbook — abus, journaux, limites (PFC-020), déploiement et retour arrière (PFC-022)
 
 Public : la personne qui exploite ELEM3NTS sur Cloudflare (staging, production). Décisions : D45 ;
 contrat : PROTOCOL « Abus, limites et en-têtes » et « Journalisation et nettoyage ».
@@ -64,9 +64,43 @@ statut Cloudflare). Le jeu reste jouable ; aucune action côté code tant que la
 été publié. `RoomStorageError:CORRUPT` ou `SCHEMA_TOO_NEW` : la room répond `ROOM_UNAVAILABLE` (échec fermé, D35) et
 expire d'elle-même ; ne pas la réécrire à la main.
 
-**Retour arrière** : la migration `v2` (classe `Limiter`) est append-only ; ne jamais la retirer de `wrangler.jsonc`.
-Revenir à une version antérieure à PFC-020 suppose de conserver la classe exportée (ou une migration de suppression
-explicite) : à préparer avec le rollback de PFC-022/023, jamais improvisé en production.
+**Retour arrière** : voir « Déployer et revenir en arrière » ci-dessous. La migration `v2` (classe `Limiter`) est
+append-only ; ne jamais la retirer de `wrangler.jsonc`.
+
+## Déployer et revenir en arrière (PFC-022, D48)
+| Environnement | Worker | Adresse | Publication |
+| --- | --- | --- | --- |
+| staging | `elem3nts-staging` | https://elem3nts-staging.elem3nts.workers.dev | CI : Actions → CI → Run workflow (`main`, `deploy_staging`) ; ou local |
+| production | `elem3nts` | à fixer par PFC-023 | `npm run deploy:production`, sur demande explicite (PFC-023) |
+
+Les deux Workers ont chacun leurs Durable Objects : rooms, limites et journaux de staging ne touchent jamais la
+production. Le Worker est créé par le premier `wrangler deploy` : ne rien créer dans le tableau de bord, et **ne pas
+activer Cloudflare Access** (il bloquerait les joueurs et les WebSockets).
+
+**Publier depuis un poste** (accès : `npx wrangler login` par le propriétaire, ou `CLOUDFLARE_API_TOKEN` et
+`CLOUDFLARE_ACCOUNT_ID` exportés, jamais écrits dans un fichier suivi) :
+`CLOUDFLARE_ENV=staging npm run verify && npm run deploy:staging`, puis
+`SMOKE_URL=https://elem3nts-staging.elem3nts.workers.dev npm run test:smoke`. Le script refuse un artefact construit pour
+une autre cible et publie avec `--strict` (refus si le Worker a été modifié hors dépôt). Chaque version porte le commit
+en tag (12 caractères) et en message (`staging <sha>`, `+ modifications locales` si l'arbre n'était pas propre).
+Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lecture du compte et de l'utilisateur).
+
+**Contrôles après publication** : smoke vert ; `curl -sI <adresse>/` (en-têtes ci-dessous) ;
+`npx wrangler deployments list --name <worker>` montre la version active et son message.
+
+**Revenir en arrière** : `npx wrangler versions list --name <worker>` (tag = commit), puis
+`npx wrangler rollback <version-id> --name <worker> --message "<raison>"`, puis le smoke. Limites Cloudflare
+([Rollbacks](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/rollbacks/)) : 100 dernières
+versions seulement ; **aucun retour par-dessus un changement de migration Durable Object** ; le stockage n'est jamais
+modifié par un retour. Pour ce dépôt :
+- versions avec les migrations `v1` + `v2` (depuis PFC-020, toutes celles publiées par PFC-022) : retour libre entre elles ;
+- une future migration `v3` rendra le retour vers les versions antérieures impossible : la publier seule, après smoke
+  staging, et préparer un correctif en avant plutôt qu'un retour ;
+- **compatibilité des rooms persistées** : `room_state.schema_version` (ARCHITECTURE « Worker ») ; une version plus
+  récente migre en lecture (`MIGRATIONS[n]`), une version plus ancienne qui trouve un schéma plus récent échoue fermé
+  (`SCHEMA_TOO_NEW` → `ROOM_UNAVAILABLE`, `alarm.failed` `RoomStorageError:SCHEMA_TOO_NEW`) et la room expire d'elle-même
+  (D43). Un changement de schéma impose donc : lecture de l'ancien schéma testée avant publication, et accepter qu'un
+  retour arrière ferme les rooms déjà réécrites (au plus 4 h de parties, D16) ; ne jamais réécrire une room à la main.
 
 ## En-têtes de sécurité
 Pages et fichiers : `public/_headers` (CSP `'self'` stricte, `nosniff`, `no-referrer`, `DENY`, COOP, Permissions-Policy,
