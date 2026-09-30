@@ -48,4 +48,4 @@ const deploy = spawnSync(
 );
 if (deploy.error) fail(`wrangler introuvable (${deploy.error.message}) : passer par « npm run deploy:${target} ».`);
 if (deploy.status !== 0) process.exit(deploy.status ?? 1);
-if (url !== undefined) console.log(`✓ ${url} — smoke : SMOKE_URL=${url} npm run test:smoke`);
+console.log(`✓ ${url} — smoke : SMOKE_URL=${url} npm run test:smoke`);

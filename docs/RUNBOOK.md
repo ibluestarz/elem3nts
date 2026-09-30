@@ -71,7 +71,7 @@ append-only ; ne jamais la retirer de `wrangler.jsonc`.
 | Environnement | Worker | Adresse | Publication |
 | --- | --- | --- | --- |
 | staging | `elem3nts-staging` | https://elem3nts-staging.elem3nts.workers.dev | CI : Actions → CI → Run workflow (`main`, `deploy_staging`) ; ou local |
-| production | `elem3nts` | à fixer par PFC-023 | `npm run deploy:production`, sur demande explicite (PFC-023) |
+| production | `elem3nts` | https://elem3nts.elem3nts.workers.dev | `npm run deploy:production`, sur demande explicite, depuis un commit exact |
 
 Les deux Workers ont chacun leurs Durable Objects : rooms, limites et journaux de staging ne touchent jamais la
 production. Le Worker est créé par le premier `wrangler deploy` : ne rien créer dans le tableau de bord, et **ne pas
@@ -84,6 +84,20 @@ activer Cloudflare Access** (il bloquerait les joueurs et les WebSockets).
 une autre cible et publie avec `--strict` (refus si le Worker a été modifié hors dépôt). Chaque version porte le commit
 en tag (12 caractères) et en message (`staging <sha>`, `+ modifications locales` si l'arbre n'était pas propre).
 Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lecture du compte et de l'utilisateur).
+
+**Livrer en production** (PFC-023, D50), dans cet ordre, sans sauter d'étape :
+1. Commit de livraison poussé ; CI GitHub verte sur ce commit (gates complets).
+2. Staging publiée depuis ce commit (`CLOUDFLARE_ENV=staging npm run verify && npm run deploy:staging`, ou job
+   `deploy-staging`) ; smoke staging vert.
+3. Depuis une extraction **propre** de ce commit (`git worktree add --detach <dossier> <sha>`, `npm ci`) :
+   `npm run verify` (artefact de production, sans `CLOUDFLARE_ENV`), puis `npm run deploy:production` (refusé si
+   l'arbre est modifié ou l'artefact d'une autre cible).
+4. `SMOKE_URL=https://elem3nts.elem3nts.workers.dev npm run test:smoke` (parcours local et room privée) et contrôle
+   des en-têtes ; version, commit et résultats consignés dans le ticket de livraison ; tag git `vX.Y.Z` sur le commit.
+
+**Régression détectée pendant la recette** (gate rouge, smoke en échec, ex. trophée attribué deux fois) : la
+livraison s'arrête là, rien n'est publié. Créer un ticket correctif (`/create-ticket`) qui cite le test en échec et
+sa sortie ; reprendre la procédure au point 1 une fois le correctif vert. Ne jamais relâcher un test pour livrer.
 
 **Contrôles après publication** : smoke vert ; `curl -sI <adresse>/` (en-têtes ci-dessous) ;
 `npx wrangler deployments list --name <worker>` montre la version active et son message.
@@ -109,7 +123,7 @@ HSTS). API : `src/worker/http.ts`. Contrôle rapide après déploiement :
 Toute dépendance à une autre origine (police, script, image, analytics) exige de modifier la CSP : ce MVP n'en a
 aucune (hors périmètre : analytics tiers). En `npm run dev`, Vite sert les fichiers sans ces en-têtes (HMR inline).
 
-## Offre Cloudflare (relevé du 2026-09-29, à revérifier avant la mise en production)
+## Offre Cloudflare (relevé du 2026-09-29, revérifié le 2026-09-30 avant la mise en production : inchangé)
 Sources : [tarifs Durable Objects](https://developers.cloudflare.com/durable-objects/platform/pricing/),
 [Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/),
 [binding Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).

@@ -31,8 +31,8 @@ aucune commande no-op ni `passWithNoTests` pour donner l'apparence d'un gate ré
 | npm run measure:scene | Outil hors gate (PFC-021, D46) : temps d'image et éclairs de la vraie scène sur le GPU du poste (Chromium avec fenêtre, serveur de développement lancé par le script, sonde `?perf`) | — |
 | npm run measure:load | Outil hors gate (PFC-021, D46) : ouverture à froid et visite suivante sous profil mobile Lighthouse, contre `npm run preview` déjà lancé ; `RUNS=9` pour plus de passages | — |
 | npm run deploy:staging | `node scripts/deploy.ts staging` (PFC-022) : publie `dist/` **déjà vérifié** sans rebuild ; refuse un artefact non construit avec `CLOUDFLARE_ENV=staging` ; version étiquetée par le commit ; accès `wrangler login` ou `CLOUDFLARE_API_TOKEN` | — |
-| npm run deploy:production | `node scripts/deploy.ts production` : même garde, artefact construit sans `CLOUDFLARE_ENV`, arbre git non modifié exigé ; jamais lancé par la CI | Publication : PFC-023 |
-| npm run test:smoke | Hors gate (PFC-022) : Playwright Chromium contre un Worker déployé (`SMOKE_URL`, HTTPS exigé hors machine locale), `tests/smoke/` : deux clients, lien d'invitation (repli SPA), WSS, reprise après rechargement, fin de partie, trophée, revanche, en-têtes, API JSON 404 ; échoue sans `SMOKE_URL` | — |
+| npm run deploy:production | `node scripts/deploy.ts production` : même garde, artefact construit sans `CLOUDFLARE_ENV`, arbre git non modifié exigé ; jamais lancé par la CI ; cible https://elem3nts.elem3nts.workers.dev (PFC-023, D50) | — |
+| npm run test:smoke | Hors gate (PFC-022, PFC-023) : Playwright Chromium contre un Worker déployé (`SMOKE_URL`, HTTPS exigé hors machine locale), `tests/smoke/deployed.spec.ts` : en ligne, deux clients (lien d'invitation, WSS, reprise après rechargement, fin de partie, trophée, revanche) ; en local, clavier partagé avec la vraie scène (victoire, trophée, revanche) ; en-têtes, API JSON 404, fichiers à empreinte ; échoue sans `SMOKE_URL` | — |
 
 Prérequis E2E sur une machine neuve : `npx playwright install chromium firefox webkit`, puis
 `sudo npx playwright install-deps chromium firefox webkit` (dépendances système Linux/WSL).
@@ -392,6 +392,10 @@ Fins de ligne : `.gitattributes` impose LF à l'extraction (`* text=auto eol=lf`
 `core.autocrlf=true` (cas du poste du propriétaire) sortait en CRLF et faisait échouer `config.test.ts` et `engine-port.test.ts`.
 
 ## Release
+Procédure effective (PFC-023, D50) : docs/RUNBOOK.md « Livrer en production » : CI GitHub verte sur le commit, staging
+publiée depuis ce commit et smoke vert, puis extraction propre → `npm ci` → `npm run verify` → `deploy:production`
+→ smoke de production (local et en ligne) → version et tag consignés. Une régression en recette arrête la livraison
+(preuve PFC-023-S2 : trophée doublé injecté, gate fonctionnel rouge, publication jamais atteinte).
 Clone propre → npm ci → installation des navigateurs Playwright avec dépendances → verify.
 En CI, conserver traces/captures/rapport en cas d'échec, avec rétention bornée ; aucun token en artifact.
 Smoke staging puis production : deux vrais clients, choix, révélation, trophée, revanche,

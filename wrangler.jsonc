@@ -7,6 +7,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "elem3nts",
   "main": "src/worker/index.ts",
+  // Production : https://elem3nts.elem3nts.workers.dev (PFC-023, D50). Pas d'URL par version : seule l'adresse publique
+  // sert le jeu (une version non promue resterait joignable).
+  "workers_dev": true,
+  "preview_urls": false,
   // Date du runtime workerd fourni par wrangler 4.143.0 : ne jamais la dépasser.
   "compatibility_date": "2026-09-26",
   // Aucune télémétrie wrangler depuis les gates locaux ou la CI.

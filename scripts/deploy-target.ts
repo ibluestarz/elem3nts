@@ -6,7 +6,7 @@
 
 export const TARGETS = {
   staging: { worker: 'elem3nts-staging', environment: 'staging', url: 'https://elem3nts-staging.elem3nts.workers.dev' },
-  production: { worker: 'elem3nts', environment: undefined, url: undefined },
+  production: { worker: 'elem3nts', environment: undefined, url: 'https://elem3nts.elem3nts.workers.dev' },
 } as const;
 
 export type Target = keyof typeof TARGETS;

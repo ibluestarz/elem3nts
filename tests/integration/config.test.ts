@@ -98,6 +98,12 @@ describe('PFC-011-AC3 — configuration Worker et migration initiale', () => {
 });
 
 describe('PFC-022-AC2 — environnement staging isolé de la production', () => {
+  it('PFC-023 — la production est servie sur workers.dev, sans URL par version', () => {
+    expect(production.name).toBe('elem3nts');
+    expect(production.workers_dev).toBe(true);
+    expect(production.preview_urls).toBe(false);
+  });
+
   it('staging est un Worker distinct (Durable Objects et stockage distincts), servi sur workers.dev sans URL par version', () => {
     expect(production.name).toBe('elem3nts');
     expect(staging.name).toBe('elem3nts-staging');

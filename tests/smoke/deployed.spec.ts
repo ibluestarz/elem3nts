@@ -1,11 +1,14 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { parseRoomEntry, parseServerMessage, type PublicState } from '../../src/shared/protocol/index.ts';
+import { trophies } from '../e2e/local-driver.ts';
 import { hudStatus, host, lobbyTitle, playerIn, toSelection, type Player } from '../e2e/online-driver.ts';
+import { trackProblems } from '../e2e/support.ts';
 
 /**
- * PFC-022 — smoke d'un Worker déployé (`npm run test:smoke`, cible `SMOKE_URL`) : deux vrais clients, deux contextes
- * indépendants, horloge réelle du serveur, aucune adresse usurpée. La scène 3D est bouchonnée (`playerIn`) : le
- * smoke éprouve l'hébergement (SPA, API, WSS, liaisons Durable Object), la scène l'est par la recette locale.
+ * PFC-022, PFC-023 — smoke d'un Worker déployé, staging puis production (`npm run test:smoke`, cible `SMOKE_URL`).
+ * En ligne : deux vrais clients, deux contextes indépendants, horloge réelle du serveur, aucune adresse usurpée ; la
+ * scène 3D y est bouchonnée (`playerIn`), le smoke éprouvant l'hébergement (SPA, API, WSS, liaisons Durable Object).
+ * En local : la vraie scène, chargée depuis l'environnement publié sous sa CSP.
  */
 
 const GAME = { timeout: 20_000 };
@@ -123,5 +126,32 @@ test.describe('PFC-022 — smoke de l’environnement déployé', () => {
     const script = await request.get(String(entry));
     expect(script.status()).toBe(200);
     expect(script.headers()['cache-control']).toContain('immutable');
+  });
+});
+
+/** Avertissement du pilote GL logiciel (rendu sans GPU du navigateur de test), sans rapport avec l'application. */
+const GL_NOISE = 'GL Driver Message';
+
+test.describe('PFC-023 — parcours local sur l’environnement déployé', () => {
+  test('PFC-023-S1 — clavier partagé, vraie scène : victoire de J1, trophée de session, revanche', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'fr-FR' });
+    const page = await context.newPage();
+    const problems = trackProblems(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Jouer en local' }).click();
+    await page.getByRole('button', { name: 'Score cible 1', exact: true }).click();
+    await page.getByRole('button', { name: /^Commencer/ }).click();
+
+    // Seul J1 choisit (feu, KeyA) : +1 pour lui (R11), X = 1 atteint, trophée de session.
+    await page.locator('[data-phase="selecting"]').waitFor({ state: 'attached', timeout: GAME.timeout });
+    await page.keyboard.press('KeyA');
+    await expect(page.getByText('Joueur 1 remporte la partie')).toBeVisible(GAME);
+    await expect(trophies(page)).toHaveText(['1', '0']);
+
+    // Revanche : scores remis à zéro, trophées conservés (SPEC « Session et revanche »).
+    await page.getByRole('button', { name: 'Rejouer' }).click();
+    await expect(page.locator('.arena__score')).toHaveText(['0', '0'], GAME);
+    expect(problems.filter((problem) => !problem.includes(GL_NOISE))).toEqual([]);
+    await context.close();
   });
 });

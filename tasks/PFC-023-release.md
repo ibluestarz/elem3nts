@@ -1,6 +1,6 @@
 # PFC-023 — Recette finale et mise en production
 
-- Statut : todo
+- Statut : in_progress
 - Priorité : P0
 - Lot : M3
 - Dépendances : PFC-022
@@ -53,7 +53,35 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
 - [ ] Suivi ci-dessous rempli et statut mis à jour.
 
 ## Suivi
-- Implémentation : non commencée.
-- Commandes exécutées / résultats : aucune.
-- Preuves / fichiers : à renseigner pendant le travail.
-- Blocages / décisions nouvelles : aucun identifié ; dépendances à terminer avant démarrage.
+- Plan (2026-09-30) : configuration de production, smoke local ajouté, documentation joueur/exploitation, évaluation
+  des tickets, preuve S2 par mutation, version 1.0.0, gates complets, CI GitHub, staging, production, smoke, tag.
+  Publication de production autorisée explicitement par le propriétaire (2026-09-30 : « lancer la 23 sans me
+  demander quoi que ce soit, je te fais confiance pour la clôturer comme il faut »).
+- AC1 — évaluation des tickets (statut dans chaque fichier, preuves dans docs/TRACEABILITY.md) :
+
+  | Tickets | Statut | Preuve |
+  | --- | --- | --- |
+  | PFC-001 à PFC-021, PFC-024 à PFC-026 | done | lignes PFC-0xx de TRACEABILITY ; 80 chemins de preuve cités, tous présents |
+  | PFC-022 | done | CI GitHub verte (run 36664480250), staging publiée, smoke 2/2 |
+  | PFC-023 | ce ticket | ci-dessous |
+  | PFC-027 | todo, hors livraison | P2 « non requise pour la release » (son ticket, D46) ; limite connue : compilation des shaders à l'ouverture |
+
+  Les 24 besoins initiaux de la matrice ont chacun des tickets et des tests ; une référence périmée corrigée
+  (`tests/tooling/engine-port.test.ts`). Aucun bug bloquant connu.
+- Implémentation :
+  - `wrangler.jsonc` : production explicite (`workers_dev: true`, `preview_urls: false`) ; `scripts/deploy-target.ts` :
+    URL de production ; `tests/integration/config.test.ts` : test PFC-023.
+  - `tests/smoke/deployed.spec.ts` (ex-`staging.spec.ts`) : parcours local ajouté (clavier partagé, vraie scène,
+    victoire, trophée, revanche) ; vert contre staging (1/1 ; suite complète 3/3 sous xvfb sans affichage).
+  - Version 1.0.0 (`package.json`, `package-lock.json`, champs `version` seuls).
+  - Documentation : README réécrit (jouer, commandes, développer, livrer) ; RUNBOOK « Livrer en production » et
+    « Régression détectée pendant la recette », offre Cloudflare revérifiée (inchangée) ; D50 ; TESTING (commandes,
+    Release) ; ARCHITECTURE (URL de production) ; TRACEABILITY (PFC-023).
+- S2 — régression « trophée doublé » (`scratchpad/release-red.sh`, copie propre, mutation dans `src/domain/session.ts`,
+  séquence build → fonctionnel → ESLint → E2E → publication) :
+  - M1, garde de doublon retirée : build vert, **fonctionnel rouge (5 échecs, dont les 4 « attribution unique par
+    matchId » PFC-003-AC3)**, ESLint et E2E sautés, publication non lancée.
+  - M2, +2 par victoire : **fonctionnel rouge (23 échecs : PFC-006, PFC-007…)**, publication non lancée.
+  - Ticket correctif : procédure RUNBOOK (aucune régression réelle constatée, donc aucun ticket créé).
+- Commandes exécutées / résultats : à compléter (gates, CI, staging, production).
+- Blocages / décisions nouvelles : D50.

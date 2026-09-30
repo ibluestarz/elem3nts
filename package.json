@@ -1,6 +1,6 @@
 {
   "name": "elem3nts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "ELEM3NTS — duel Feu · Eau · Plante à deux joueurs, en local ou en room privée.",
   "type": "module",
