@@ -52,7 +52,9 @@ jobs:
       - run: npm run build
       - run: npm run test:functional
       - run: npm run lint
-      - run: npm run test:e2e
+      # Écran virtuel : sans serveur d'affichage, Firefox headless n'a pas de WebGL2 et journalise un avertissement que
+      # la recette compte comme un problème (32 échecs au run 36650584121). Le poste de référence (WSLg) en a un.
+      - run: xvfb-run -a npm run test:e2e
       - name: Liste publique des échecs Playwright (échec seulement)
         if: failure()
         run: node scripts/ci-failures.ts test-results/results.json

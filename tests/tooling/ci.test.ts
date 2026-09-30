@@ -27,7 +27,9 @@ function job(name: string): string {
 }
 
 const jobNames = [...jobs.matchAll(/^ {2}([\w-]+):$/gm)].map((match) => match[1]);
-const runs = (block: string) => [...block.matchAll(/^\s+(?:- )?run: (.+)$/gm)].map((match) => String(match[1]));
+/** Commandes des étapes `run:`, sans l'écran virtuel qui enveloppe les E2E (`xvfb-run -a`). */
+const runs = (block: string) =>
+  [...block.matchAll(/^\s+(?:- )?run: (.+)$/gm)].map((match) => String(match[1]).replace(/^xvfb-run -a /, ''));
 const verifyJob = job('verify');
 const deployJob = job('deploy-staging');
 
@@ -45,10 +47,12 @@ describe('PFC-022-S1 / AC1 — gates de la CI dans l’ordre imposé, aucun dép
     // Navigateurs installés avant les E2E ; aucune étape tolérante à l'échec.
     expect(steps.findIndex((step) => step.startsWith('npx playwright install'))).toBeLessThan(steps.indexOf('npm run test:e2e'));
     expect(workflow).not.toMatch(/continue-on-error|\|\| true/);
+    // Firefox headless n'a WebGL2 qu'avec un serveur d'affichage, comme sur le poste de référence.
+    expect(verifyJob).toMatch(/^ {6}- run: xvfb-run -a npm run test:e2e$/m);
   });
 
   it('l’artefact n’est publié qu’après tous les gates ; le rapport Playwright seulement en cas d’échec', () => {
-    const e2e = verifyJob.indexOf('run: npm run test:e2e');
+    const e2e = verifyJob.indexOf('run: xvfb-run -a npm run test:e2e');
     const artifact = verifyJob.indexOf('name: dist-staging');
     expect(e2e).toBeGreaterThan(-1);
     expect(artifact).toBeGreaterThan(e2e);

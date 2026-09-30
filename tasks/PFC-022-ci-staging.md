@@ -111,6 +111,12 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   24.04 (rendu des polices différent). Correctif : runner `ubuntu-22.04` (même distribution que la capture ; la
   tolérance n'est pas relâchée) ; reporter `json` + `scripts/ci-failures.ts` : liste complète des échecs en une
   annotation publique.
+- Troisième run (2cd49fd, run 36650584121, ubuntu-22.04) : parité visuelle et contraste désormais verts ; liste
+  publique : **32 échecs, tous Firefox**, même cause : sans serveur d'affichage, Firefox headless n'a pas de WebGL2 et
+  journalise « Failed to create WebGL context … AllowWebgl2:false », compté par `trackProblems` (le jeu, lui, se
+  replie correctement). Reproduit en local en retirant `DISPLAY`/`WAYLAND_DISPLAY` (smoke.spec:9 et worker.spec:46
+  en échec, même avertissement) ; `webgl.force-enabled` n'y change rien ; sous `xvfb-run -a` : 9/9 verts. Correctif :
+  étape E2E de la CI sous `xvfb-run -a` (le poste de référence, WSLg, a un affichage).
 - Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
