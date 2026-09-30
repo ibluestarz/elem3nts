@@ -67,9 +67,12 @@ describe('PFC-022-S1 / AC1 — gates de la CI dans l’ordre imposé, aucun dép
   it('en échec, la liste complète des tests en erreur est publiée sans bloquer ni masquer l’échec', () => {
     expect(verifyJob).toMatch(/if: failure\(\)\n\s+run: node scripts\/ci-failures\.ts test-results\/results\.json/);
     expect(failures({ suites: [{ specs: [
-      { title: 'a', file: 'x.spec.ts', line: 3, tests: [{ projectName: 'chromium', status: 'unexpected' }, { projectName: 'webkit', status: 'expected' }] },
+      { title: 'a', file: 'x.spec.ts', line: 3, tests: [
+        { projectName: 'chromium', status: 'unexpected', results: [{ annotations: [{ type: 'revanche 2', description: '{"listeners":174}' }] }] },
+        { projectName: 'webkit', status: 'expected' },
+      ] },
     ], suites: [{ specs: [{ title: 'b', file: 'y.spec.ts', line: 9, tests: [{ projectName: 'firefox', status: 'flaky' }] }] }] }] }))
-      .toEqual(['[chromium] x.spec.ts:3 a']);
+      .toEqual(['[chromium] x.spec.ts:3 a', '    revanche 2 : {"listeners":174}']);
     expect(notice('Échecs, 2: fin', ['a 100%', 'b'])).toBe('::notice title=Échecs%2C 2%3A fin::a 100%25%0Ab');
   });
 

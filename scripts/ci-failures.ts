@@ -11,7 +11,11 @@ interface Spec {
   readonly title: string;
   readonly file: string;
   readonly line: number;
-  readonly tests: readonly { readonly projectName: string; readonly status: string }[];
+  readonly tests: readonly {
+    readonly projectName: string;
+    readonly status: string;
+    readonly results?: readonly { readonly annotations?: readonly { readonly type: string; readonly description?: string }[] }[];
+  }[];
 }
 
 interface Suite {
@@ -19,12 +23,20 @@ interface Suite {
   readonly specs?: readonly Spec[];
 }
 
-/** Tests dont le résultat n'est pas celui attendu (`unexpected`), un par projet (navigateur). */
+/**
+ * Tests dont le résultat n'est pas celui attendu (`unexpected`), un par projet (navigateur), suivis des annotations
+ * posées pendant l'exécution (mesures d'un test de fuite, par exemple) : de quoi diagnostiquer sans le rapport.
+ */
 export function failures(suite: Suite): string[] {
   const own = (suite.specs ?? []).flatMap((spec) =>
     spec.tests
       .filter((test) => test.status === 'unexpected')
-      .map((test) => `[${test.projectName}] ${spec.file}:${String(spec.line)} ${spec.title}`),
+      .flatMap((test) => [
+        `[${test.projectName}] ${spec.file}:${String(spec.line)} ${spec.title}`,
+        ...(test.results ?? []).flatMap((result) =>
+          (result.annotations ?? []).map(({ type, description }) => `    ${type} : ${(description ?? '').slice(0, 300)}`),
+        ),
+      ]),
   );
   return [...own, ...(suite.suites ?? []).flatMap(failures)];
 }

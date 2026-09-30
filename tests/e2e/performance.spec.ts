@@ -152,8 +152,10 @@ test.describe('PFC-021-AC3 — 20 revanches avec la vraie scène 3D', () => {
       Program: middle.webgl['Program'],
       VertexArray: middle.webgl['VertexArray'],
     });
-    expect(last.listeners).toBeLessThanOrEqual(early.listeners);
-    expect(last.nodes).toBeLessThanOrEqual(early.nodes);
+    // Écouteurs et nœuds re-mesurés jusqu'au retour au niveau de la 2e revanche : un élément éphémère compté à l'instant
+    // de la mesure disparaît, une fuite reste (CI 2 cœurs, run 36654697804 : 175 contre 174, jamais reproduit seul).
+    await expect.poll(async () => (await snapshot()).listeners, { timeout: 10_000 }).toBeLessThanOrEqual(early.listeners);
+    await expect.poll(async () => (await snapshot()).nodes, { timeout: 10_000 }).toBeLessThanOrEqual(early.nodes);
     expect(last.frameRequests).toBe(early.frameRequests);
     // Tas JS après ramasse-miettes : pas de croissance au-delà du bruit d'allocation (mesuré, D46).
     expect(last.heapMb - early.heapMb).toBeLessThan(2);

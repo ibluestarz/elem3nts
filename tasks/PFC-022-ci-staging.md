@@ -117,6 +117,12 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   replie correctement). Reproduit en local en retirant `DISPLAY`/`WAYLAND_DISPLAY` (smoke.spec:9 et worker.spec:46
   en échec, même avertissement) ; `webgl.force-enabled` n'y change rien ; sous `xvfb-run -a` : 9/9 verts. Correctif :
   étape E2E de la CI sous `xvfb-run -a` (le poste de référence, WSLg, a un affichage).
+- Quatrième run (97b5a60, run 36654697804, xvfb) : **1 échec sur 306**, `performance.spec.ts:75` (PFC-021-AC3, 20
+  revanches) : 175 écouteurs contre ≤ 174. Non reproduit en local dans les conditions de la CI (sans affichage,
+  xvfb-run, 2 cœurs par `taskset`) : 4/4 verts, 174 écouteurs aux revanches 2, 10 et 20 (aucune croissance par
+  partie ; une fuite en donnerait ~+18). Écouteur éphémère compté à l'instant de la mesure sous charge : écouteurs
+  et nœuds re-mesurés (GC + une image) jusqu'au retour au niveau initial, 10 s au plus ; une fuite échoue toujours.
+  La liste publique des échecs inclut désormais les mesures annotées du test. Test modifié : 9/9 verts (3 × 3).
 - Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
