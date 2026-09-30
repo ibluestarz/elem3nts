@@ -100,6 +100,7 @@ Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lect
 | Date | Version | Commit (tag) | Staging | Production | Smoke |
 | --- | --- | --- | --- | --- | --- |
 | 2026-09-30 | 1.0.0 | `8d51cdc` (`v1.0.0`) | `7c6c01d6-b8e7-4ded-91f6-00060460cf84` | `c9a52b2a-cf54-423e-a7c2-0ca55028c5ce` | 3/3 staging, 3/3 production |
+| 2026-09-30 | 1.0.1 (PFC-027) | `450a8da` (`v1.0.1`) | `6537b22a-f753-4840-9ae7-b1d48c5ca554` | `8ab309e1-0940-4d89-9fca-d75e15c7fe40` | 3/3 staging ; production : 1er passage 2/3 (socket WSS de J1 coupée une fois puis reprise par le client, partie menée à terme ; 3/3 en relance ×3 du test puis 3/3 de la suite) |
 
 Première publication de production : aucune version antérieure vers laquelle revenir ; en cas d'incident grave avant
 la version suivante, `npx wrangler delete --name elem3nts` retire le jeu (les rooms en cours sont perdues).

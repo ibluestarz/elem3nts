@@ -3,7 +3,7 @@
 Duel web à deux joueurs inspiré de pierre-feuille-ciseaux : **feu brûle plante, plante absorbe eau, eau éteint
 feu**. On joue à deux sur un même clavier, à tour de rôle sur un seul téléphone, ou en ligne dans une room privée.
 
-**Jouer : https://elem3nts.bluestarz.workers.dev** (version 1.0.0). Aucun compte, aucune installation.
+**Jouer : https://elem3nts.bluestarz.workers.dev** (version 1.0.1). Aucun compte, aucune installation.
 
 ## Comment jouer
 - **Une manche** : chacun a 5 secondes pour choisir un élément ; le premier choix est définitif et reste caché
