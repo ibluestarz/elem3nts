@@ -1,7 +1,7 @@
 import { evaluateMatch, type Element, type PlayerIndex, type Scores } from '../../domain/index.ts';
 import { CYCLE_MS, clashDelays, revealDelay, roundFollowUp, roundResultMs, type RoundFollowUp } from '../../shared/cycle.ts';
 import type { PublicMatchResult, PublicRoundResult, PublicState } from '../../shared/protocol/index.ts';
-import { OPENING_TITLE, SUDDEN_BANNER, pointsLine, roundBanner, type Banner, type PlayerNames } from '../copy.ts';
+import { OPENING_TITLE, SUDDEN_BANNER, pointsLine, resultAnnouncement, roundBanner, type Banner, type PlayerNames } from '../copy.ts';
 import { ELEMENT_NAMES, PLAYER_NAMES } from '../input/keys.ts';
 import type { SceneView } from '../scene/commands.ts';
 import { NO_STATUS, type ArenaModel, type HudStatus } from '../screens/arenaModel.ts';
@@ -191,15 +191,7 @@ function announcementOf(state: PublicState, phase: Phase, names: PlayerNames, pi
     return `Manche ${round} : choisissez.`;
   }
   if (phase === 'result' && banner && state.revealedChoices) {
-    const choices = fromMySide(state.revealedChoices, state.yourSlot);
-    const scores = fromMySide(state.scores, state.yourSlot);
-    const picks = ([0, 1] as const)
-      .map((side) => {
-        const element = choices[side];
-        return `${names[side]} : ${element ? ELEMENT_NAMES[element] : 'aucun choix'}`;
-      })
-      .join(', ');
-    return `${picks}. ${banner.title} — ${banner.sub}. Score ${String(scores[0])} à ${String(scores[1])}.`;
+    return resultAnnouncement(names, fromMySide(state.revealedChoices, state.yourSlot), banner, fromMySide(state.scores, state.yourSlot));
   }
   if (phase === 'sudden') return `${SUDDEN_BANNER.title} : ${SUDDEN_BANNER.sub}.`;
   return '';

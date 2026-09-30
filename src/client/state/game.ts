@@ -97,6 +97,9 @@ export type GameAction =
   | { readonly type: 'new-session' }
   | { readonly type: 'quit' };
 
+/** Échéance atteinte, émise par l'horloge du cycle (`useCycle`). */
+export type CycleTick = Extract<GameAction, { readonly type: 'tick' }>;
+
 const IDLE_CYCLE = {
   phase: 'intro',
   deadline: null,

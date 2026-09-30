@@ -1,6 +1,6 @@
 import { useLayoutEffect, type Dispatch } from 'react';
 import { now } from './clock.ts';
-import type { GameAction } from './game.ts';
+import type { CycleTick } from './game.ts';
 
 /**
  * Horloge du cycle local : une seule minuterie vers la prochaine échéance, qui émet un `tick`
@@ -12,8 +12,11 @@ import type { GameAction } from './game.ts';
  * La minuterie se réarme donc tant que l'échéance n'est pas atteinte. Elle est posée dans le commit
  * même du rendu (`useLayoutEffect`) : une phase affichée a toujours son échéance planifiée.
  */
-/** `hotseat` : la prochaine manche s'ouvre en tour par tour (un seul téléphone, PFC-025). */
-export function useCycle(deadline: number | null, hotseat: boolean, dispatch: Dispatch<GameAction>): void {
+/**
+ * `hotseat` : la prochaine manche s'ouvre en tour par tour (un seul téléphone, PFC-025). Toute machine à
+ * échéances qui accepte ce `tick` s'en sert (cycle local, démo des confrontations).
+ */
+export function useCycle(deadline: number | null, hotseat: boolean, dispatch: Dispatch<CycleTick>): void {
   useLayoutEffect(() => {
     if (deadline === null) return undefined;
     let timer = 0;

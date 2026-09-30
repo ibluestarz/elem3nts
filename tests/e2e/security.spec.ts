@@ -66,6 +66,9 @@ test.describe('PFC-020-AC3 — en-têtes de sécurité et CSP', () => {
   });
 
   test('PFC-020-AC3 — scène 3D réelle sous CSP : aucune violation, aucune erreur de page', async ({ page }) => {
+    // Vraie scène en rendu logiciel, comme scene.spec.ts : 8 s seule, plus de 30 s quand elle croise les tests 3D
+    // réels du gate parallèle (mesuré, PFC-026).
+    test.setTimeout(120_000);
     const violations = await recordViolations(page);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));

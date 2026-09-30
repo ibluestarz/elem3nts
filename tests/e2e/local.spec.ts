@@ -145,6 +145,8 @@ test.describe('PFC-009 — recette locale', () => {
   });
 
   test('PFC-009-AC2 — borne X = 10, nul OFF : 9/9 continue, 10/10 mort subite, 11/10 victoire', async ({ page }) => {
+    // Une vingtaine de manches : 22 s seul sous WebKit, 33,5 s une fois sous la charge du gate (mesuré, PFC-026).
+    test.slow();
     const problems = trackProblems(page);
     await openFrozen(page);
     await prepareByKeyboard(page, 'End');

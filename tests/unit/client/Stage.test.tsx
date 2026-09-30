@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Stage from '../../../src/client/Stage.tsx';
+import type { Engine } from '../../../src/client/scene/engine.js';
 import { SceneContext, SCENE_LOADING, sceneFallback, type SceneState } from '../../../src/client/scene/sceneContext.ts';
 import { CYCLE_MS, clashDelays } from '../../../src/client/state/game.ts';
 
@@ -85,10 +86,10 @@ describe('PFC-004 — accueil et raccourcis', () => {
     vi.useFakeTimers();
     renderStage();
 
-    fireEvent.click(button('Démo des confrontations'));
-    expect(screen.getByRole('status')).toHaveTextContent('La démo des confrontations arrive bientôt.');
-    fireEvent.click(button('Démo des confrontations'));
-    expect(screen.getAllByText('La démo des confrontations arrive bientôt.')).toHaveLength(1);
+    fireEvent.click(button('Notes de conception'));
+    expect(screen.getByRole('status')).toHaveTextContent('Les notes de conception arrivent bientôt.');
+    fireEvent.click(button('Notes de conception'));
+    expect(screen.getAllByText('Les notes de conception arrivent bientôt.')).toHaveLength(1);
 
     act(() => {
       vi.advanceTimersByTime(4300);
@@ -99,10 +100,10 @@ describe('PFC-004 — accueil et raccourcis', () => {
   it('ferme un toast à la demande, avec une sortie animée', () => {
     vi.useFakeTimers();
     renderStage();
-    fireEvent.click(button('Démo des confrontations'));
+    fireEvent.click(button('Notes de conception'));
 
     fireEvent.click(button('Fermer la notification'));
-    expect(screen.getByText('La démo des confrontations arrive bientôt.').closest('.toast')).toHaveClass('toast--leaving');
+    expect(screen.getByText('Les notes de conception arrivent bientôt.').closest('.toast')).toHaveClass('toast--leaving');
     act(() => {
       vi.advanceTimersByTime(250);
     });
@@ -879,7 +880,7 @@ describe('PFC-021 — parcours clavier et focus', () => {
 
   it('fermer au clavier une notification rend le focus à son origine, jamais au <body>', () => {
     renderStage();
-    const origin = button('Démo des confrontations');
+    const origin = button('Notes de conception');
     fireEvent.click(origin);
     origin.focus();
 
@@ -889,5 +890,137 @@ describe('PFC-021 — parcours clavier et focus', () => {
     });
     fireEvent.click(close);
     expect(origin).toHaveFocus();
+  });
+});
+
+describe('PFC-026 — démo des confrontations', () => {
+  const runButton = (name: string) => within(screen.getByRole('group', { name: 'Confrontations' })).getByRole('button', { name });
+  const scores = () => [...document.querySelectorAll('.arena__score')].map((node) => node.textContent);
+  const statuses = () => [statusOf(0).textContent, statusOf(1).textContent];
+
+  function openDemo() {
+    fireEvent.click(button('Démo des confrontations'));
+    expect(screen.getByRole('heading', { name: 'Démo des confrontations' })).toHaveFocus();
+    expect(screen.getByRole('region', { name: 'Démo · rejouer chaque confrontation' })).toBeInTheDocument();
+  }
+
+  it('ouvre la démo (plus de toast) : neuf confrontations, vainqueur à gauche, 0/0 au repos', () => {
+    renderStage();
+    openDemo();
+
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(within(screen.getByRole('group', { name: 'Confrontations' })).getAllByRole('button')).toHaveLength(9);
+    expect(button('À gauche')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('À droite')).toHaveAttribute('aria-pressed', 'false');
+    expect(scores()).toEqual(['0', '0']);
+    expect(statuses()).toEqual(['', '']);
+    // Pas de « Quitter » dans la démo (maquette) : « Accueil » et Échap en tiennent lieu.
+    expect(screen.queryByRole('button', { name: 'Échap · Quitter' })).not.toBeInTheDocument();
+  });
+
+  it('PFC-026-S1 et S2 — Eau + Eau : verrous, révélation, 2/2 → 1/1 ; une autre confrontation est ignorée pendant l’effet', () => {
+    vi.useFakeTimers();
+    renderStage();
+    openDemo();
+
+    const siphon = runButton('Eau + Eau');
+    siphon.focus();
+    fireEvent.click(siphon);
+    expect(scores()).toEqual(['2', '2']);
+    expect(statuses()).toEqual(['Choix verrouillé', 'Choix verrouillé']);
+    expect(runButton('Feu + Feu')).toHaveAttribute('aria-disabled', 'true');
+
+    advance(700);
+    expect(statuses()).toEqual(['Eau', 'Eau']);
+    fireEvent.click(runButton('Feu + Feu'));
+    expect(statuses()).toEqual(['Eau', 'Eau']);
+
+    advance(CYCLE_MS.reveal);
+    expect(banner()).toHaveClass('arena__banner--hidden');
+    advance(clashDelays('siphon').toImpact);
+    expect(banner()).toHaveTextContent('La mer engloutit tout−1 pour les 2 joueurs');
+    expect(scores()).toEqual(['1', '1']);
+    expect(screen.getAllByText('−1')).toHaveLength(2);
+    expect(screen.getByText(/^Joueur 1 : Eau, Joueur 2 : Eau\. La mer engloutit tout/)).toBeInTheDocument();
+
+    advance(clashDelays('siphon').afterImpact);
+    expect(banner()).toHaveClass('arena__banner--hidden');
+    expect(scores()).toEqual(['1', '1']);
+    expect(statuses()).toEqual(['', '']);
+    expect(runButton('Feu + Feu')).toHaveAttribute('aria-disabled', 'false');
+    // Le bouton cliqué a gardé le focus pendant tout l'effet.
+    expect(siphon).toHaveFocus();
+    // Aucune manche suivante : l'état de repos se maintient.
+    advance(60_000);
+    expect(statuses()).toEqual(['', '']);
+  });
+
+  it('vainqueur à droite : Eau › Feu donne le point à Joueur 2', () => {
+    vi.useFakeTimers();
+    renderStage();
+    openDemo();
+    fireEvent.click(button('À droite'));
+    expect(button('À droite')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(runButton('Eau › Feu'));
+    advance(700);
+    expect(statuses()).toEqual(['Feu', 'Eau']);
+    advance(CYCLE_MS.reveal);
+    advance(clashDelays('wave').toImpact);
+    expect(banner()).toHaveTextContent('L’Eau éteint le Feu+1 pour Joueur 2');
+    expect(scores()).toEqual(['2', '3']);
+  });
+
+  it('PFC-026-AC2 — Échap et « Accueil » ramènent à l’accueil, focus sur la démo ; aucun trophée ni session modifiés', () => {
+    vi.useFakeTimers();
+    renderStage();
+    openDemo();
+    fireEvent.click(runButton('Feu + Feu'));
+    advance(700);
+    escape();
+    expect(button('Démo des confrontations')).toHaveFocus();
+
+    openDemo();
+    fireEvent.click(button('Accueil'));
+    expect(button('Démo des confrontations')).toHaveFocus();
+
+    // Une partie jouée ensuite ne compte qu'elle-même.
+    startLocalAtOne();
+    playDecisiveRound(J1_WINS);
+    expect(trophies()).toEqual(['1', '0']);
+  });
+
+  it('pilote seule la scène : mêmes commandes que la partie, puis accueil rendu à la scène de l’application', () => {
+    vi.useFakeTimers();
+    const engine = {
+      setScene: vi.fn(),
+      setLock: vi.fn(),
+      reveal: vi.fn(),
+      clash: vi.fn(),
+      reset: vi.fn(),
+      celebrate: vi.fn(),
+      setQuality: vi.fn(),
+      setReduced: vi.fn(),
+      setMobile: vi.fn(),
+    };
+    const scene = { status: 'ready', reason: null, engine: engine as unknown as Engine, trinity: [] } as const satisfies SceneState;
+    render(
+      <SceneContext.Provider value={scene}>
+        <Stage />
+      </SceneContext.Provider>,
+    );
+    openDemo();
+    expect(engine.setScene).toHaveBeenLastCalledWith('arena');
+
+    fireEvent.click(runButton('Plante › Eau'));
+    expect(engine.reveal).not.toHaveBeenCalled();
+    advance(700);
+    expect(engine.reveal).toHaveBeenCalledWith('plant', 'water');
+    advance(CYCLE_MS.reveal);
+    expect(engine.clash).toHaveBeenCalledTimes(1);
+    expect(engine.clash).toHaveBeenCalledWith('grow', 0);
+
+    escape();
+    expect(engine.setScene).toHaveBeenLastCalledWith('home');
   });
 });

@@ -1,7 +1,7 @@
 import { ELEMENTS, lockedPlayers, type Element, type PlayerIndex, type Scores } from '../../domain/index.ts';
 import { ElementPicks } from '../components/ElementPicks.tsx';
 import { Keycap } from '../components/Keycap.tsx';
-import { OPENING_TITLE, SUDDEN_BANNER, pointsLine, roundBanner, type Banner } from '../copy.ts';
+import { OPENING_TITLE, SUDDEN_BANNER, pointsLine, resultAnnouncement, roundBanner, type Banner } from '../copy.ts';
 import { ELEMENT_NAMES, PLAYER_NAMES } from '../input/keys.ts';
 import { useScene } from '../scene/sceneContext.ts';
 import { displayedScores, type GameState } from '../state/game.ts';
@@ -61,14 +61,7 @@ function announcementOf(game: GameState, scores: Scores): string {
         : `${names.join('')} a verrouillé son choix.`;
   }
   if (game.phase === 'result' && game.play && game.revealed) {
-    const { title, sub } = roundBanner(game.play.round);
-    const picks = ([0, 1] as const)
-      .map((player) => {
-        const element = game.revealed?.[player] ?? null;
-        return `${PLAYER_NAMES[player]} : ${element ? ELEMENT_NAMES[element] : 'aucun choix'}`;
-      })
-      .join(', ');
-    return `${picks}. ${title} — ${sub}. Score ${String(scores[0])} à ${String(scores[1])}.`;
+    return resultAnnouncement(PLAYER_NAMES, game.revealed, roundBanner(game.play.round), scores);
   }
   if (game.phase === 'sudden') return `${SUDDEN_BANNER.title} : ${SUDDEN_BANNER.sub}.`;
   return '';

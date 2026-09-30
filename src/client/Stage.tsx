@@ -7,6 +7,7 @@ import { layoutLabels, useLayoutState } from './hooks/useLayoutLabels.ts';
 import { keyLabel, type KeySlot } from './input/keys.ts';
 import { isEditableTarget, ownsKey, useLocalKeys } from './input/useLocalKeys.ts';
 import { Arena } from './screens/Arena.tsx';
+import { DemoScreen } from './screens/DemoScreen.tsx';
 import { EndScreen } from './screens/EndScreen.tsx';
 import { localEndProps } from './screens/arenaModel.ts';
 import { useScene, type FallbackReason } from './scene/sceneContext.ts';
@@ -24,10 +25,9 @@ import { updatePreferences, usePreferences } from './state/preferences.ts';
 import { useCycle } from './state/useCycle.ts';
 import './Stage.css';
 
-type Screen = 'home' | 'setup' | 'rules' | 'settings' | 'arena' | 'online';
+type Screen = 'home' | 'setup' | 'rules' | 'settings' | 'arena' | 'online' | 'demo';
 
 const SOON: Readonly<Partial<Record<HomeAction, string>>> = {
-  demo: 'La démo des confrontations arrive bientôt.',
   notes: 'Les notes de conception arrivent bientôt.',
 };
 
@@ -70,9 +70,11 @@ function StageScreens() {
 
   const scene = useScene();
   const sceneOptions = { quality: preferences.quality, reducedMotion: preferences.reducedMotion, compact };
-  const sceneView = useMemo(() => sceneViewOf(screen === 'online' ? 'home' : screen, game), [screen, game]);
-  // Le mode en ligne pilote lui-même la scène (lobby puis partie, `OnlineScreen`) : un seul pont actif.
-  useSceneBridge(screen === 'online' ? null : scene.engine, sceneView, sceneOptions);
+  // Le mode en ligne (lobby puis partie, `OnlineScreen`) et la démo (`DemoScreen`) pilotent eux-mêmes la
+  // scène : un seul pont actif.
+  const ownsScene = screen === 'online' || screen === 'demo';
+  const sceneView = useMemo(() => sceneViewOf(ownsScene ? 'home' : screen, game), [ownsScene, screen, game]);
+  useSceneBridge(ownsScene ? null : scene.engine, sceneView, sceneOptions);
 
   // Repli sans 3D : annoncé une seule fois, avec sa cause (D33).
   const fallbackAnnounced = useRef(false);
@@ -190,6 +192,7 @@ function StageScreens() {
         setScreen('setup');
       }
       else if (action === 'online') setScreen('online');
+      else if (action === 'demo') setScreen('demo');
       else if (action === 'rules') setScreen('rules');
       else openSettings('home');
     },
@@ -232,6 +235,7 @@ function StageScreens() {
       else if (screen === 'settings') closeSettings();
       else if (screen === 'rules') goHome('rules');
       else if (screen === 'setup') goHome('local');
+      else if (screen === 'demo') goHome('demo');
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
@@ -294,6 +298,16 @@ function StageScreens() {
           }}
           onNotes={() => {
             toast.show(SOON.notes ?? '');
+          }}
+        />
+      )}
+      {screen === 'demo' && (
+        <DemoScreen
+          compact={compact}
+          target={game.target}
+          sceneOptions={sceneOptions}
+          onHome={() => {
+            goHome('demo');
           }}
         />
       )}

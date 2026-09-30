@@ -16,6 +16,10 @@ interface ArenaFrameProps {
   readonly overlay?: ReactNode;
   /** Partie affichée (`data-match-id`), pour les outils de test et de diagnostic. */
   readonly matchId?: string | undefined;
+  /** Titre de l'écran (h2 focalisé à l'entrée) ; par défaut, la manche et la cible. */
+  readonly title?: string;
+  /** `hidden` : pas de bouton « Quitter » (démo : son panneau a son bouton « Accueil », maquette). */
+  readonly quit?: 'visible' | 'hidden';
 }
 
 const statusClass = (base: string, status: HudStatus) => (status.tone ? `${base} ${base}--${status.tone}` : base);
@@ -24,7 +28,17 @@ const statusClass = (base: string, status: HudStatus) => (status.tone ? `${base}
  * Arène (maquette `inArena`), commune au jeu local et en ligne : scores, statuts, décompte, manche et
  * bannière, rendus depuis un `ArenaModel` déjà décidé. Chaque mode y ajoute ses propres contrôles.
  */
-export function ArenaFrame({ compact, model, onQuit, desktopExtras, compactExtras, overlay, matchId }: ArenaFrameProps) {
+export function ArenaFrame({
+  compact,
+  model,
+  onQuit,
+  desktopExtras,
+  compactExtras,
+  overlay,
+  matchId,
+  title,
+  quit = 'visible',
+}: ArenaFrameProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const { names, scores, deltas, statuses, target, banner, phase } = model;
   const round = Math.max(1, model.round);
@@ -51,7 +65,7 @@ export function ArenaFrame({ compact, model, onQuit, desktopExtras, compactExtra
   return (
     <div className="arena screen-enter" data-phase={phase} data-match-id={matchId}>
       <h2 className="visually-hidden" id="screen-title" tabIndex={-1} ref={titleRef} data-focus-target>
-        {`Arène · manche ${String(round)} · premier à ${String(target)}`}
+        {title ?? `Arène · manche ${String(round)} · premier à ${String(target)}`}
       </h2>
       <p className="visually-hidden" aria-live="polite">
         {model.announcement}
@@ -81,11 +95,13 @@ export function ArenaFrame({ compact, model, onQuit, desktopExtras, compactExtra
             </div>
           </div>
           {compactExtras}
-          <div className="arena-m__actions">
-            <button type="button" className="arena-m__quit" onClick={onQuit}>
-              Quitter
-            </button>
-          </div>
+          {quit === 'visible' && (
+            <div className="arena-m__actions">
+              <button type="button" className="arena-m__quit" onClick={onQuit}>
+                Quitter
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -114,9 +130,11 @@ export function ArenaFrame({ compact, model, onQuit, desktopExtras, compactExtra
             <p className="arena__round">{`Manche ${String(round)} · premier à ${String(target)}${model.sudden ? ' · mort subite' : ''}`}</p>
           </div>
           {desktopExtras}
-          <button type="button" className="arena__quit" onClick={onQuit}>
-            Échap · Quitter
-          </button>
+          {quit === 'visible' && (
+            <button type="button" className="arena__quit" onClick={onQuit}>
+              Échap · Quitter
+            </button>
+          )}
         </>
       )}
       <div

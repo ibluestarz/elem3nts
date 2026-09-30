@@ -1,6 +1,7 @@
 import type { Element, Match, Scores, Trophies } from '../../domain/index.ts';
 import type { Banner, PlayerNames } from '../copy.ts';
 import { PLAYER_NAMES } from '../input/keys.ts';
+import type { DemoPhase } from '../state/demo.ts';
 import { trophiesWon, type Phase } from '../state/game.ts';
 
 /** Statut d'un joueur sous son score : texte et teinte (`locked` or, un élément révélé, ou gris). */
@@ -17,8 +18,8 @@ export const NO_STATUS: HudStatus = Object.freeze({ text: '', tone: null });
  * L'arène ne calcule rien : scores, résultats et échéances y arrivent déjà décidés.
  */
 export interface ArenaModel {
-  /** Phase affichée (`data-phase`), vocabulaire du cycle local (D09). */
-  readonly phase: Phase;
+  /** Phase affichée (`data-phase`) : vocabulaire du cycle local (D09), ou de la démo (PFC-026). */
+  readonly phase: Phase | DemoPhase;
   readonly names: PlayerNames;
   readonly scores: Scores;
   /** Variations de la manche, montrées depuis l'impact ; `null` sinon. */

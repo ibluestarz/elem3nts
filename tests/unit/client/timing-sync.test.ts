@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEMO_ARM_MS } from '../../../src/client/state/demo.ts';
 import { CLASH_TIMING, CYCLE_MS, clashDelays } from '../../../src/client/state/game.ts';
 import * as e2e from '../../e2e/timing.ts';
 
@@ -9,5 +10,9 @@ describe('PFC-008 — chronologie des tests E2E alignée sur le jeu', () => {
     for (const kind of Object.keys(CLASH_TIMING) as (keyof typeof CLASH_TIMING)[]) {
       expect(e2e.clashDelays(kind)).toEqual(clashDelays(kind));
     }
+  });
+
+  it('PFC-026 — reprend le délai des verrous de la démo', () => {
+    expect(e2e.DEMO_ARM_MS).toBe(DEMO_ARM_MS);
   });
 });

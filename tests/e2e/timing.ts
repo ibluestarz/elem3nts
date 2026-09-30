@@ -36,3 +36,6 @@ export function clashDelays(kind: ClashKind): { readonly toImpact: number; reado
   const toImpact = Math.round(duration * impact);
   return { toImpact, afterImpact: duration - toImpact + CYCLE.afterEffect };
 }
+
+/** Démo des confrontations : verrous montrés 0,7 s avant la révélation (`DEMO_ARM_MS`, src/client/state/demo.ts). */
+export const DEMO_ARM_MS = 700;

@@ -202,6 +202,18 @@ pas un navigateur à tester. Fallback DOM si WebGL indisponible ou contexte perd
   pas utilisés : le reducer porte les échéances (phase `clash`, `CLASH_TIMING`, D09).
 - `Stage` annonce un repli par un toast unique (cause en clair) ; le jeu reste entièrement dans le DOM.
 
+### Démo des confrontations (PFC-026, D49)
+- `state/demo.ts` : reducer pur (`idle → armed → reveal → clash → result → idle`), échéances de la partie
+  (`revealDelay`, `clashDelays`, D09) plus 0,7 s de verrous (`DEMO_ARM_MS`). La résolution vient de
+  `resolveRound` au lancement ; aucune session, aucun trophée, aucune manche suivante. Un lancement hors repos
+  est ignoré (garde du reducer).
+- `demoSceneView` projette l'état dans le vocabulaire de `sceneCommands` (écran `demo` : scène d'arène remise
+  au repos à l'entrée ; verrous comme une sélection ; repos après une confrontation comme l'après-manche).
+- `screens/DemoScreen.tsx` possède son reducer, son horloge (`useCycle`, jamais en tour par tour) et son pont
+  de scène, comme `OnlineScreen` : `Stage` retire le sien tant que la démo est affichée (un seul pont actif).
+  L'arène commune (`ArenaFrame`, sans « Quitter ») affiche le modèle ; Échap et « Accueil » rendent le focus
+  au bouton de l'accueil.
+
 ### Contrat réseau v1 (PFC-010, D34)
 - `src/shared/protocol/` : types, validation runtime, politique et projection du protocole, partagés par le
   client en ligne et le Worker. Pur comme le domaine, qu'il est seul à importer : projet TypeScript

@@ -2,8 +2,8 @@ import type { Choice, RoundKind } from '../../domain/index.ts';
 import type { Phase } from '../state/game.ts';
 import type { ClashKind, EngineElement, SceneName } from './engine.js';
 
-/** Écrans de l'application vus par la scène. */
-export type SceneScreen = 'home' | 'setup' | 'rules' | 'settings' | 'arena';
+/** Écrans de l'application vus par la scène ; `demo` rejoue une confrontation hors partie (PFC-026). */
+export type SceneScreen = 'home' | 'setup' | 'rules' | 'settings' | 'arena' | 'demo';
 
 /**
  * Projection de l'état du jeu utile à la scène. Les choix n'y figurent qu'une fois révélés :
@@ -30,10 +30,13 @@ export type SceneCommand =
   | { readonly type: 'celebrate'; readonly winner: 0 | 1 | -1 };
 
 /** Scène de fond par écran (maquette `go`) : l'arène dès la préparation. */
-const sceneOf = (screen: SceneScreen): SceneName => (screen === 'setup' || screen === 'arena' ? 'arena' : 'home');
+const sceneOf = (screen: SceneScreen): SceneName => (screen === 'home' || screen === 'rules' || screen === 'settings' ? 'home' : 'arena');
 
 /** Écrans dont l'entrée remet la scène au repos (maquette `go` : tout sauf les réglages). */
-const RESETTING: ReadonlySet<SceneScreen> = new Set(['home', 'setup', 'rules']);
+const RESETTING: ReadonlySet<SceneScreen> = new Set(['home', 'setup', 'rules', 'demo']);
+
+/** Écrans où se jouent des manches : partie et démo. */
+const PLAYING: ReadonlySet<SceneScreen> = new Set(['arena', 'demo']);
 
 /** Phases d'après-manche : la maquette remet la scène au repos (`afterRound`). */
 const AFTER_ROUND: ReadonlySet<Phase> = new Set(['pause', 'sudden', 'closing']);
@@ -53,7 +56,7 @@ export function sceneCommands(prev: SceneView | null, next: SceneView): readonly
     if (RESETTING.has(next.screen)) commands.push({ type: 'reset' });
     commands.push({ type: 'setScene', scene: sceneOf(next.screen) });
   }
-  if (next.screen !== 'arena' || next.matchId === null) return commands;
+  if (!PLAYING.has(next.screen) || next.matchId === null) return commands;
 
   // Nouvelle partie (début ou revanche) : scène d'arène au repos (maquette `startMatch`).
   if (prev?.matchId !== next.matchId) commands.push({ type: 'reset' }, { type: 'setScene', scene: 'arena' });

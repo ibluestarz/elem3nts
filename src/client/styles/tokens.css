@@ -42,10 +42,15 @@
   --line: rgb(233 227 214 / 30%);
   --line-soft: rgb(233 227 214 / 25%);
   --line-faint: rgb(233 227 214 / 8%);
+  --line-quiet: rgb(233 227 214 / 20%);
+  --line-hairline: rgb(233 227 214 / 15%);
   --line-gold: rgb(216 184 120 / 20%);
   --surface-glass: rgb(8 11 13 / 82%);
   --surface-glass-strong: rgb(8 11 13 / 90%);
   --surface-glass-deep: rgb(8 11 13 / 92%);
+  /* Panneau de la démo des confrontations (maquette : .84) et fond léger de ses boutons. */
+  --surface-glass-panel: rgb(8 11 13 / 84%);
+  --surface-wash: rgb(255 255 255 / 2%);
 
   /* Typographie (piles identiques à la maquette) */
   --font-body: 'Alegreya Sans', sans-serif;

@@ -1,5 +1,5 @@
-import { TARGET_MAX, TARGET_MIN, type RoundResolution, type TargetInputError } from '../domain/index.ts';
-import { PLAYER_NAMES } from './input/keys.ts';
+import { TARGET_MAX, TARGET_MIN, type Choices, type RoundKind, type RoundResolution, type Scores, type TargetInputError } from '../domain/index.ts';
+import { ELEMENT_NAMES, PLAYER_NAMES } from './input/keys.ts';
 
 /** Textes d'interface partagés entre écrans (français, D19). */
 export const pointsLine = (target: number): string => `Premier à ${String(target)} point${target > 1 ? 's' : ''}`;
@@ -46,6 +46,33 @@ export function roundBanner(
   const banner = texts[round.kind];
   return floored ? { ...banner, sub: `${banner.sub} (score minimum : 0)` } : banner;
 }
+
+/**
+ * Annonce complète d'un résultat pour lecteurs d'écran (région live de l'arène) : choix révélés,
+ * explication et scores, dans l'ordre des noms affichés.
+ */
+export function resultAnnouncement(names: PlayerNames, choices: Choices, banner: Banner, scores: Scores): string {
+  const picks = ([0, 1] as const)
+    .map((side) => {
+      const element = choices[side];
+      return `${names[side]} : ${element ? ELEMENT_NAMES[element] : 'aucun choix'}`;
+    })
+    .join(', ');
+  return `${picks}. ${banner.title} — ${banner.sub}. Score ${String(scores[0])} à ${String(scores[1])}.`;
+}
+
+/** Démo des confrontations (maquette `demoIds`) : libellé de chaque bouton. */
+export const DEMO_LABELS: Readonly<Record<RoundKind, string>> = {
+  wave: 'Eau › Feu',
+  burn: 'Feu › Plante',
+  grow: 'Plante › Eau',
+  flare: 'Feu + Feu',
+  siphon: 'Eau + Eau',
+  thrive: 'Plante + Plante · écart',
+  balance: 'Plante + Plante · égalité',
+  solo: 'Temps écoulé',
+  void: 'Aucun choix',
+};
 
 export const OPENING_TITLE = 'Que le duel commence';
 export const SUDDEN_BANNER: Banner = {

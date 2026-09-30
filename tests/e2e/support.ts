@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import type { Browser, BrowserContext, BrowserContextOptions, Locator, Page } from '@playwright/test';
 import { matchEndedState, pausedState, roomOf, roundResultState, selectingState, startingState } from './online-fake.ts';
-import { CYCLE, clashDelays, type ClashKind } from './timing.ts';
+import { CYCLE, DEMO_ARM_MS, clashDelays, type ClashKind } from './timing.ts';
 
 /**
  * Adresse cliente d'un contexte de test (PFC-020, D45). Le Worker limite créations, jonctions et sockets par
@@ -268,6 +268,28 @@ async function toTurnSelection(page: Page): Promise<void> {
   await toTurnGate(page);
   await click(page, 'Je suis prêt');
   await page.getByText('Joueur 1 · touchez un élément').waitFor();
+}
+
+/**
+ * Démo des confrontations depuis l'accueil (PFC-026). Sa ligne « premier à X » reprend le X de la
+ * préparation (maquette `target`) : X = 3, défaut de l'application (D07), est d'abord réglé des deux côtés.
+ */
+async function toDemo(page: Page): Promise<void> {
+  await toSetup(page);
+  await click(page, 'Score cible 3');
+  await page.keyboard.press('Escape');
+  await click(page, 'Démo des confrontations');
+  await page.getByText('Démo · rejouer chaque confrontation').waitFor();
+}
+
+/**
+ * Démo, confrontation lancée puis révélée 0,7 s plus tard (maquette `runDemo`) : Joueur 1 vainqueur,
+ * son élément (Eau pour « Eau › Feu ») apparaît sous son score.
+ */
+async function toDemoReveal(page: Page, label: string): Promise<void> {
+  await toDemo(page);
+  await click(page, label);
+  await step(page, DEMO_ARM_MS, () => page.getByText('Eau', { exact: true }).first().waitFor());
 }
 
 /** Feu (J1, touche Q en AZERTY) contre Plante (J2, touche L). */
@@ -537,6 +559,28 @@ export const SCREEN_STATES: readonly ScreenState[] = [
         page.getByText('Le Feu consume la Plante').first().waitFor({ state: 'detached' }),
       );
       await step(page, CYCLE.closing, () => page.getByText('Fin de partie').waitFor());
+    },
+  },
+  // PFC-026 : démo des confrontations (maquette `isDemo`), au repos, révélée, à l'impact, puis revenue au repos.
+  { name: 'demo', reach: toDemo },
+  { name: 'demo-reveal', reach: (page) => toDemoReveal(page, 'Eau › Feu') },
+  {
+    name: 'demo-result',
+    reach: async (page) => {
+      await toDemoReveal(page, 'Eau › Feu');
+      // Texte commun aux deux rendus (Eau › Feu, D41 ne s'applique qu'aux éléments identiques).
+      await toImpact(page, 'wave', '+1 pour Joueur 1');
+    },
+  },
+  {
+    name: 'demo-after',
+    desktopOnly: true,
+    reach: async (page) => {
+      await toDemoReveal(page, 'Eau › Feu');
+      await toImpact(page, 'wave', '+1 pour Joueur 1');
+      await step(page, clashDelays('wave').afterImpact, () =>
+        page.getByText('+1 pour Joueur 1').first().waitFor({ state: 'detached' }),
+      );
     },
   },
   // PFC-025 : tour par tour sur un seul téléphone (maquette `gate`, `trinTaps`, `mobHint`).

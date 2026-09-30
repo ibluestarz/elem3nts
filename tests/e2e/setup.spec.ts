@@ -109,10 +109,10 @@ test.describe('PFC-004 — accueil, règles et réglages', () => {
   test('PFC-004 — Espace sur un bouton ciblé ne déclenche pas en plus le raccourci global', async ({ page }) => {
     await openHome(page);
 
-    await page.getByRole('button', { name: 'Démo des confrontations' }).focus();
+    await page.getByRole('button', { name: 'Notes de conception' }).focus();
     await page.keyboard.press('Space');
 
-    await expect(page.getByRole('status')).toHaveText(/La démo des confrontations arrive bientôt\./);
+    await expect(page.getByRole('status')).toHaveText(/Les notes de conception arrivent bientôt\./);
     await expect(page.getByRole('heading', { name: 'Préparer le duel' })).toHaveCount(0);
   });
 

@@ -49,7 +49,7 @@ function apply(engine: Engine, command: SceneCommand): void {
   }
 }
 
-interface BridgeOptions {
+export interface BridgeOptions {
   readonly quality: Quality;
   readonly reducedMotion: boolean;
   readonly compact: boolean;

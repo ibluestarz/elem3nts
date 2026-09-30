@@ -316,6 +316,30 @@ Depuis PFC-025 (tour par tour sur un seul téléphone, D47) :
 - **Parité visuelle** (maquette, tolérance nulle) : états `turn-gate-p1`, `turn-select-p1` (zones à toucher),
   `turn-gate-p2`, `turn-gate-p2-late` (`mobileOnly`) ; les états en ligne restent identiques après l'extraction
   d'`ElementPicks`. **A11y** : voile et tour de J1 audités (axe, contraste), voile utilisable au clavier.
+Depuis PFC-026 (démo des confrontations, D49) :
+- **Unitaires** : `demo.test.ts` (neuf confrontations × deux côtés : résolution égale à `resolveRound`, vainqueur = côté
+  choisi hors effets symétriques ; départs de la maquette ; S1 Eau + Eau 2/2 → 1/1 aux échéances D09 puis repos sans
+  manche suivante ; S2 lancement ignoré à chaque phase ; échéance idempotente ; commandes de scène : aucun élément
+  avant la révélation, entrée, verrous, révélation, effet, repos) ; `Stage.test.tsx` (ouverture sans toast, S1/S2 à
+  l'écran, bouton activé gardant le focus, vainqueur à droite, Échap et « Accueil » rendant le focus, trophées d'une
+  partie jouée ensuite inchangés, pont de scène propre à la démo) ; `timing-sync.test.ts` (`DEMO_ARM_MS`).
+- **E2E** `tests/e2e/demo.spec.ts` (3 navigateurs, horloge figée) : parcours au clavier seul (S1, S2 au clavier et au
+  pointeur, retour au repos, Échap), vainqueur à droite, repli sans WebGL, audit axe + contraste au repos et pendant un
+  effet. Un bouton `aria-disabled` est cliqué avec `force` : Playwright le jugerait inactif, un pointeur l'atteint.
+  Firefox ne reboucle pas la tabulation après le dernier contrôle : viser un contrôle placé après le focus courant.
+- **Parité visuelle** (maquette, tolérance nulle) : `demo`, `demo-reveal`, `demo-result` (bureau et téléphone) et
+  `demo-after` (bureau), « Eau › Feu » (texte commun aux deux rendus, D41). Le parcours règle d'abord X = 3 des deux
+  côtés (défaut de la maquette : 5, D07). L'état « verrous » (0,7 s) n'est pas capturé (écart assumé, D49).
+- **3D réelle** (hors gate, GPU Intel Iris Xe via D3D12/WSLg, Chromium avec fenêtre, script jetable) : les 18
+  confrontations (9 × 2 côtés) jouées sur la scène réelle, sans repli ni erreur console. Sous ce compositeur, les
+  boutons atténués d'un panneau flouté montrent des diagonales : la maquette les montre à l'identique (artefact de
+  plateforme, absent du rendu de référence).
+- Mutations contrôlées (restaurées), détectées : garde de lancement retirée (S2 échoue, unitaire et écran) ; éléments
+  montrés avant la révélation (scène et statuts, 2 tests échouent).
+- **Délais du gate** : avec 12 tests de plus, l'ordonnancement parallèle a fait croiser « scène 3D réelle sous CSP »
+  (`security.spec.ts`, 8 s seul) avec les tests 3D réels de `scene.spec.ts` et `performance.spec.ts` : délai de 30 s
+  dépassé deux fois de suite (32 s). Délai porté à 120 s, comme les autres tests en rendu logiciel. La borne X = 10
+  (`local.spec.ts`, une vingtaine de manches, 22 s seule sous WebKit, 33,5 s une fois au gate) passe en `test.slow()`.
 Pour un ticket purement documentaire : liens, IDs, cohérence et diff suffisent ; ne pas prétendre
 que le build a été exécuté dans un dossier sans application. Pour les tickets code, exécuter les
 gates disponibles, noter précisément ceux que les dépendances ne permettent pas encore.
