@@ -95,6 +95,15 @@ Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lect
 4. `SMOKE_URL=https://elem3nts.elem3nts.workers.dev npm run test:smoke` (parcours local et room privée) et contrôle
    des en-têtes ; version, commit et résultats consignés dans le ticket de livraison ; tag git `vX.Y.Z` sur le commit.
 
+**Versions publiées** (retour arrière : `npx wrangler rollback <version précédente> --name <worker>`, voir plus bas) :
+
+| Date | Version | Commit (tag) | Staging | Production | Smoke |
+| --- | --- | --- | --- | --- | --- |
+| 2026-09-30 | 1.0.0 | `8d51cdc` (`v1.0.0`) | `7c6c01d6-b8e7-4ded-91f6-00060460cf84` | `c9a52b2a-cf54-423e-a7c2-0ca55028c5ce` | 3/3 staging, 3/3 production |
+
+Première publication de production : aucune version antérieure vers laquelle revenir ; en cas d'incident grave avant
+la version suivante, `npx wrangler delete --name elem3nts` retire le jeu (les rooms en cours sont perdues).
+
 **Régression détectée pendant la recette** (gate rouge, smoke en échec, ex. trophée attribué deux fois) : la
 livraison s'arrête là, rien n'est publié. Créer un ticket correctif (`/create-ticket`) qui cite le test en échec et
 sa sortie ; reprendre la procédure au point 1 une fois le correctif vert. Ne jamais relâcher un test pour livrer.
