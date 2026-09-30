@@ -132,14 +132,8 @@ function collectText(): TextBox[] {
   return boxes;
 }
 
-/**
- * Contraste mesuré de chaque texte visible ; la capture est décodée dans une page vierge (CSP, PFC-020).
- * `onCapture` reçoit la capture du fond (textes masqués), pour un diagnostic en cas d'échec.
- */
-export async function measureTextContrast(
-  page: Page,
-  options: { readonly onCapture?: (capture: Buffer) => void } = {},
-): Promise<ContrastSample[]> {
+/** Contraste mesuré de chaque texte visible ; la capture est décodée dans une page vierge (CSP, PFC-020). */
+export async function measureTextContrast(page: Page): Promise<ContrastSample[]> {
   // Instantané cohérent : transitions finies attendues, animations infinies figées le temps de la mesure (la
   // couleur relevée et la capture montrent alors la même image), puis relancées.
   await settleAnimations(page);
@@ -149,6 +143,8 @@ export async function measureTextContrast(
     return infinite;
   });
   const boxes = await page.evaluate(collectText);
+  const shot = () => page.screenshot({ animations: 'allow', scale: 'css' });
+  const withText = await shot();
   const sheet = await page.evaluateHandle(() => {
     const hidden = new CSSStyleSheet();
     hidden.replaceSync(
@@ -157,8 +153,16 @@ export async function measureTextContrast(
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, hidden];
     return hidden;
   });
-  const capture = await page.screenshot({ animations: 'allow', scale: 'css' });
-  options.onCapture?.(capture);
+  // Sous rendu logiciel chargé (CI GitHub), une capture peut précéder l'application de la feuille qui masque les
+  // textes : les glyphes y comptaient comme fond (3,88 au lieu de 11,99, capture publiée au run 36662299940). Capture
+  // retenue : différente de l'image avec textes, puis stable sur deux prises (borné ; sans texte visible, les images
+  // restent identiques et la dernière est retenue).
+  let capture = await shot();
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const next = await shot();
+    if (!capture.equals(withText) && next.equals(capture)) break;
+    capture = next;
+  }
   await sheet.evaluate((hidden) => {
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((adopted) => adopted !== hidden);
   });

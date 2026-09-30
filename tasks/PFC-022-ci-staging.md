@@ -133,6 +133,11 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   (5,77), même position. Hypothèse : la capture du fond (textes masqués par une feuille adoptée) reprend en CI une
   image antérieure au masquage ; les pixels des glyphes comptent alors comme fond. Le diagnostic publie désormais
   l'extrait de cette capture (découpé sous la limite de 4 096 caractères ; en local : textes bien masqués).
+- Septième run (14ea0eb, run 36662299940) : capture du fond publiée par la CI : **textes encore visibles** alors que
+  la feuille qui les masque est appliquée → hypothèse confirmée (image antérieure au masquage sous rendu logiciel
+  chargé). Défaut du test, pas de l'application. Correctif dans `measureTextContrast` : capture retenue différente de
+  l'image avec textes, puis stable sur deux prises (borné) ; diagnostic retiré. `a11y.spec.ts` : 33/33 sur les trois
+  navigateurs dans les conditions de la CI.
 - Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
