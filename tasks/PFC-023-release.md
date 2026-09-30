@@ -83,5 +83,13 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
     matchId » PFC-003-AC3)**, ESLint et E2E sautés, publication non lancée.
   - M2, +2 par victoire : **fonctionnel rouge (23 échecs : PFC-006, PFC-007…)**, publication non lancée.
   - Ticket correctif : procédure RUNBOOK (aucune régression réelle constatée, donc aucun ticket créé).
+- Recette du candidat e1cb17a : copie propre dans les conditions de la CI (staging) : build ; Vitest 844/844 ; ESLint ;
+  Playwright 307 passed, 18 skipped ; CI GitHub verte (run 36668295480). Mais `npm run verify` de production sur
+  extraction propre : **1 échec**, `performance.spec.ts:75` : +1 programme WebGL et +1 VAO entre les revanches 10 et 20
+  (65→66, 261→262). **Livraison arrêtée** (procédure S2) le temps d'établir la cause : 4/4 verts dans le même
+  environnement (54/227 → 65/261 → 65/261) ; variante à 40 revanches sous charge, 2/2 : 65 programmes et 261 VAO de la
+  10e à la 40e, écouteurs 174, nœuds 175, tas +0,3 Mo : aucune fuite, recompilation unique de D46 arrivée après la
+  10e partie. Assertion ajustée : au plus une unité d'écart entre la 10e et la 20e revanche (une fuite par partie en
+  donne ≥ 10) ; éprouvée : 2/2 verts, écart injecté de +2 détecté. Livraison reprise depuis le commit du correctif.
 - Commandes exécutées / résultats : à compléter (gates, CI, staging, production).
 - Blocages / décisions nouvelles : D50.

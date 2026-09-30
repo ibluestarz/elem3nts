@@ -146,12 +146,16 @@ test.describe('PFC-021-AC3 — 20 revanches avec la vraie scène 3D', () => {
       Shader,
     });
     expect(resources(last.webgl)).toEqual(resources(early.webgl));
-    // Programmes et VAO : three.js recompile une fois, à la 6e partie consécutive, des programmes aux sources identiques
-    // (mesuré, cause interne non isolée, D46), puis plus rien : plateau entre la 10e et la 20e revanche.
-    expect({ Program: last.webgl['Program'], VertexArray: last.webgl['VertexArray'] }).toEqual({
-      Program: middle.webgl['Program'],
-      VertexArray: middle.webgl['VertexArray'],
-    });
+    // Programmes et VAO : three.js recompile une fois, vers la 6e partie consécutive, des programmes aux sources
+    // identiques (mesuré, cause interne non isolée, D46), puis plus rien : plateau entre la 10e et la 20e revanche.
+    // Sous charge, cette recompilation unique peut arriver après la 10e (PFC-023 : +1 programme et +1 VAO une fois en
+    // 30 passages) ; 40 revanches mesurées restent à 65 programmes et 261 VAO de la 10e à la 40e. Une fuite par partie
+    // donnerait au moins +10 : une seule unité d'écart est admise, jamais davantage.
+    for (const kind of ['Program', 'VertexArray']) {
+      const growth = (last.webgl[kind] ?? 0) - (middle.webgl[kind] ?? 0);
+      expect(growth, `${kind} entre la 10e et la 20e revanche`).toBeGreaterThanOrEqual(0);
+      expect(growth, `${kind} entre la 10e et la 20e revanche`).toBeLessThanOrEqual(1);
+    }
     // Écouteurs et nœuds re-mesurés jusqu'au retour au niveau de la 2e revanche : un élément éphémère compté à l'instant
     // de la mesure disparaît, une fuite reste (CI 2 cœurs, run 36654697804 : 175 contre 174, jamais reproduit seul).
     await expect.poll(async () => (await snapshot()).listeners, { timeout: 10_000 }).toBeLessThanOrEqual(early.listeners);
