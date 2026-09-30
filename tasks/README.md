@@ -43,7 +43,7 @@ Le numéro donne un ordre conseillé ; seules les dépendances imposent l'ordre 
 | [PFC-019](done/PFC-019-recette-reseau.md) | Recette multijoueur et tests adverses | M2 | PFC-018 |
 | [PFC-020](done/PFC-020-securite.md) | Durcissement abus et observabilité | M3 | PFC-019 |
 | [PFC-021](done/PFC-021-accessibilite-performance.md) | Accessibilité et performance de la version complète | M3 | PFC-009, PFC-019 |
-| [PFC-022](PFC-022-ci-staging.md) | CI reproductible et déploiement staging Cloudflare | M3 | PFC-020, PFC-021 |
+| [PFC-022](done/PFC-022-ci-staging.md) | CI reproductible et déploiement staging Cloudflare | M3 | PFC-020, PFC-021 |
 | [PFC-023](PFC-023-release.md) | Recette finale et mise en production | M3 | PFC-022 |
 | [PFC-024](done/PFC-024-regles-maquette.md) | Règles de manche de la maquette (5 s, choix unique, manche vide) | M1 | PFC-002, PFC-003 |
 | [PFC-025](done/PFC-025-local-mobile-tour-par-tour.md) | Local mobile tour par tour | M1 | PFC-006 |

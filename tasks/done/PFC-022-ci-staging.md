@@ -1,6 +1,6 @@
 # PFC-022 — CI reproductible et déploiement staging Cloudflare
 
-- Statut : blocked
+- Statut : done
 - Priorité : P0
 - Lot : M3
 - Dépendances : PFC-020, PFC-021
@@ -13,8 +13,8 @@ CI du dépôt choisi, scripts release, secrets injectés, config staging/prod is
 
 ## Règles et contraintes
 TESTING ordre imposé ; Static Assets + DO ; migrations explicites ; accès Cloudflare requis seulement pour publier.
-Références : [SPEC](../docs/SPEC.md), [décisions](../docs/DECISIONS.md),
-[architecture](../docs/ARCHITECTURE.md), [protocole](../docs/PROTOCOL.md).
+Références : [SPEC](../../docs/SPEC.md), [décisions](../../docs/DECISIONS.md),
+[architecture](../../docs/ARCHITECTURE.md), [protocole](../../docs/PROTOCOL.md).
 
 ## Exemple / mapping
 | Entrée / état | Action | Sortie attendue |
@@ -24,8 +24,8 @@ Références : [SPEC](../docs/SPEC.md), [décisions](../docs/DECISIONS.md),
 
 ## Critères d'acceptation
 - [x] AC1 : CI clean exécute npm ci, build, fonctionnel, ESLint et Playwright dans cet ordre avec arrêt en échec.
-- [ ] AC2 : Staging sert SPA, API et WSS avec bonnes bindings ; aucun token livré au client.
-- [ ] AC3 : Smoke deux joueurs/reconnexion passe sur staging ; rollback et compatibilité stockage documentés.
+- [x] AC2 : Staging sert SPA, API et WSS avec bonnes bindings ; aucun token livré au client.
+- [x] AC3 : Smoke deux joueurs/reconnexion passe sur staging ; rollback et compatibilité stockage documentés.
 
 ## Scénarios Gherkin
 ```gherkin
@@ -46,11 +46,11 @@ Pipeline et npm run verify local ; smoke réel staging, version publiée et preu
 Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critères d'acceptation.
 
 ## Definition of Done
-- [ ] AC1 à AC3 vérifiés avec preuves, y compris les erreurs décrites.
-- [ ] Scénarios PFC-022-S1 et S2 traduits en tests appropriés et exécutés.
-- [ ] [DoD commune](../docs/TESTING.md) satisfaite ; gates indisponibles explicitement signalés.
-- [ ] Contrats et documents impactés cohérents ; aucune régression du parcours déjà livré.
-- [ ] Suivi ci-dessous rempli et statut mis à jour.
+- [x] AC1 à AC3 vérifiés avec preuves, y compris les erreurs décrites.
+- [x] Scénarios PFC-022-S1 et S2 traduits en tests appropriés et exécutés.
+- [x] [DoD commune](../../docs/TESTING.md) satisfaite ; gates indisponibles explicitement signalés.
+- [x] Contrats et documents impactés cohérents ; aucune régression du parcours déjà livré.
+- [x] Suivi ci-dessous rempli et statut mis à jour.
 
 ## Suivi
 - Implémentation (2026-09-29/30, D48) :
@@ -138,14 +138,23 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   chargé). Défaut du test, pas de l'application. Correctif dans `measureTextContrast` : capture retenue différente de
   l'image avec textes, puis stable sur deux prises (borné) ; diagnostic retiré. `a11y.spec.ts` : 33/33 sur les trois
   navigateurs dans les conditions de la CI.
-- Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
+- **CI GitHub verte** : run 36664480250 sur 40b5e6d (ubuntu-22.04) : build, fonctionnel, ESLint, Playwright trois
+  navigateurs ; job `deploy-staging` sauté (pas de `workflow_dispatch`), comme prévu.
+- **Staging publié (2026-09-30, accès `wrangler login` du propriétaire, publication autorisée)** : depuis une
+  extraction propre de 40b5e6d avec l'artefact vérifié (`CLOUDFLARE_ENV=staging`, recette complète verte sur l'arbre
+  identique d'86b435a ; aucun fichier applicatif modifié entre les deux commits, `git diff --name-only` vide),
+  `npm run deploy:staging` : Worker `elem3nts-staging`, version **a9be4c1a-cab0-4744-a3f3-891858638e5b**, tag
+  `40b5e6dd573e`, message `staging 40b5e6dd573e2af5f037bc53eac2a1b0f5b912b8` (`wrangler deployments list`), liaisons
+  ROOMS et LIMITER. https://elem3nts-staging.elem3nts.workers.dev : HTTP 200, CSP, HSTS, `X-Frame-Options: DENY`,
+  `nosniff`, `no-referrer`, COOP ; `/p/ABCDEFGH` → 200 `text/html` (repli SPA) ; `/api/inconnue` → 404 JSON.
+- **Smoke staging** (`SMOKE_URL=https://elem3nts-staging.elem3nts.workers.dev npm run test:smoke`) : **2 passed
+  (22,5 s)** : deux clients, création, lien d'invitation, WSS de même origine, rechargement et reprise de la manche,
+  victoire et trophée, revanche, aucun choix adverse avant révélation, aucun token dans URL ni console ; en-têtes.
+- Rollback et compatibilité du stockage : docs/RUNBOOK.md « Déployer et revenir en arrière ».
+- Limites : le job CI `deploy-staging` (workflow_dispatch) n'a pas encore été déclenché (aucun jeton GitHub ici) ;
+  la publication a suivi la même procédure en local. Avant le premier push, la CI était prouvée sur copies propres
+  (choix initial du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
     288 passed, 18 skipped (14,8 min).
-- Blocages / décisions nouvelles : D48. **Bloqué sur l'accès Cloudflare** : publication staging autorisée par le
-  propriétaire (2026-09-29), mais `npx wrangler whoami` → « You are not authenticated » ; aucun déploiement effectué.
-  AC1 prouvé localement ; AC2 (staging servi) et AC3 (smoke staging) sans preuve réelle, donc non cochés.
-  Reprise, au choix : (a) le propriétaire lance `npx wrangler login`, puis `CLOUDFLARE_ENV=staging npm run verify`
-  (ou l'artefact vérifié du run 4), `npm run deploy:staging`,
-  `SMOKE_URL=https://elem3nts-staging.elem3nts.workers.dev npm run test:smoke`, `curl -sI` des en-têtes, version et
-  URL consignées ici ; (b) après `/commit` et push autorisés : Actions → CI → Run workflow (`main`, `deploy_staging`).
+- Blocages / décisions nouvelles : D48. Blocage d'accès Cloudflare levé (`wrangler login`, 2026-09-30) ; aucun blocage restant.
