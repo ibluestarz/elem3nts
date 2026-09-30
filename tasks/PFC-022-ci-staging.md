@@ -123,6 +123,12 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   partie ; une fuite en donnerait ~+18). Écouteur éphémère compté à l'instant de la mesure sous charge : écouteurs
   et nœuds re-mesurés (GC + une image) jusqu'au retour au niveau initial, 10 s au plus ; une fuite échoue toujours.
   La liste publique des échecs inclut désormais les mesures annotées du test. Test modifié : 9/9 verts (3 × 3).
+- Cinquième run (c913ba1, run 36657980715) : test de fuite vert (re-mesure : élément éphémère confirmé) ; 1 échec,
+  `a11y.spec.ts` PFC-021-S2, contraste du raccourci de l'accueil 3,88 < 4,5 (déjà 3,69 au run 24.04, vert aux runs
+  2cd49fd, 97b5a60, 86b435a). Local strictement déterministe : 11,99 (texte) et 5,77 (touche) sur 12 passages sous
+  charge ; hypothèses écartées par expérience : polices retardées de 1,5 s (vert), phase d'animation (seule
+  `screen-enter`, 10 ms). Diagnostic ajouté : en CI et en échec seulement, mesures et extrait JPEG de la zone publiés
+  en annotation (éprouvé en local : 4,7 ko, image lisible).
 - Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
