@@ -132,8 +132,14 @@ function collectText(): TextBox[] {
   return boxes;
 }
 
-/** Contraste mesuré de chaque texte visible ; la capture est décodée dans une page vierge (CSP, PFC-020). */
-export async function measureTextContrast(page: Page): Promise<ContrastSample[]> {
+/**
+ * Contraste mesuré de chaque texte visible ; la capture est décodée dans une page vierge (CSP, PFC-020).
+ * `onCapture` reçoit la capture du fond (textes masqués), pour un diagnostic en cas d'échec.
+ */
+export async function measureTextContrast(
+  page: Page,
+  options: { readonly onCapture?: (capture: Buffer) => void } = {},
+): Promise<ContrastSample[]> {
   // Instantané cohérent : transitions finies attendues, animations infinies figées le temps de la mesure (la
   // couleur relevée et la capture montrent alors la même image), puis relancées.
   await settleAnimations(page);
@@ -152,6 +158,7 @@ export async function measureTextContrast(page: Page): Promise<ContrastSample[]>
     return hidden;
   });
   const capture = await page.screenshot({ animations: 'allow', scale: 'css' });
+  options.onCapture?.(capture);
   await sheet.evaluate((hidden) => {
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter((adopted) => adopted !== hidden);
   });

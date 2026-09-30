@@ -271,18 +271,48 @@ test.describe('PFC-021-S1 / AC1 — clavier seul, focus visible et jamais perdu'
 });
 
 /**
- * Diagnostic (PFC-022) : contraste de l'accueil sous le seuil sur la CI GitHub seulement (runs 36648162703 et
- * 36657980715, 3,69 et 3,88 ; 11,99 et 5,77 à chaque passage local, même sous charge). En CI et en échec seulement,
- * les mesures et un extrait JPEG de la zone partent en annotation publique du run (journaux et rapport exigent une
- * authentification). À retirer une fois la cause établie.
+ * Diagnostic (PFC-022) : contraste de l'accueil sous le seuil sur la CI GitHub seulement (runs 36648162703,
+ * 36657980715 et 36660311578 : texte 3,69 à 3,88 ; 11,99 à chaque passage local, même sous charge). En CI et en échec
+ * seulement, les mesures et un extrait JPEG de la capture du fond (textes masqués) partent en annotations publiques
+ * du run, découpées sous la limite de 4 096 caractères (journaux et rapport exigent une authentification).
+ * À retirer une fois la cause établie.
  */
-async function publishContrastEvidence(page: Page, area: Locator, samples: readonly ContrastSample[]): Promise<void> {
+async function publishContrastEvidence(
+  page: Page,
+  area: Locator,
+  samples: readonly ContrastSample[],
+  capture: Buffer | undefined,
+): Promise<void> {
   if (!process.env['GITHUB_ACTIONS'] || samples.every((sample) => sample.ratio >= sample.required)) return;
   const box = await area.boundingBox();
-  const clip = box && { x: Math.max(0, box.x - 40), y: Math.max(0, box.y - 20), width: box.width + 80, height: box.height + 40 };
-  const image = await page.screenshot({ type: 'jpeg', quality: 80, ...(clip ? { clip } : {}) });
+  const clip = box && { x: Math.max(0, box.x - 20), y: Math.max(0, box.y - 10), width: box.width + 40, height: box.height + 20 };
   const measures = samples.map(({ selector, text, ratio, required }) => ({ selector, text, ratio, required }));
-  console.log(`::notice title=Diagnostic contraste accueil::${JSON.stringify({ measures, clip })}%0Adata:image/jpeg;base64,${image.toString('base64')}`);
+  console.log(`::notice title=Diagnostic contraste accueil::${JSON.stringify({ measures, clip })}`);
+  if (!clip || !capture) return;
+  const scratch = await page.context().newPage();
+  try {
+    const jpeg = await scratch.evaluate(
+      async ([src, region]) => {
+        const image = new Image();
+        await new Promise((resolve) => {
+          image.onload = resolve;
+          image.src = src;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = region.width;
+        canvas.height = region.height;
+        canvas.getContext('2d')?.drawImage(image, region.x, region.y, region.width, region.height, 0, 0, region.width, region.height);
+        return canvas.toDataURL('image/jpeg', 0.8).split(',')[1] ?? '';
+      },
+      [`data:image/png;base64,${capture.toString('base64')}`, clip] as const,
+    );
+    const parts = jpeg.match(/.{1,3800}/g) ?? [];
+    parts.forEach((part, index) => {
+      console.log(`::notice title=Capture du fond ${String(index + 1)}/${String(parts.length)}::${part}`);
+    });
+  } finally {
+    await scratch.close();
+  }
 }
 
 test.describe('PFC-021-S2 / AC2 — mouvements réduits', () => {
@@ -297,9 +327,16 @@ test.describe('PFC-021-S2 / AC2 — mouvements réduits', () => {
     const hint = page.locator('.home__hint');
     await expect(hint).toHaveCSS('opacity', '1');
     if (measuresContrast(page)) {
-      const hintContrast = (await measureTextContrast(page)).filter((sample) => HOME_HINT.includes(sample.selector));
+      let background: Buffer | undefined;
+      const hintContrast = (
+        await measureTextContrast(page, {
+          onCapture: (capture) => {
+            background = capture;
+          },
+        })
+      ).filter((sample) => HOME_HINT.includes(sample.selector));
       expect(hintContrast.length).toBeGreaterThan(0);
-      await publishContrastEvidence(page, hint, hintContrast);
+      await publishContrastEvidence(page, hint, hintContrast, background);
       for (const sample of hintContrast) expect(sample.ratio).toBeGreaterThanOrEqual(sample.required);
     }
 
