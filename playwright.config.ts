@@ -11,8 +11,13 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: 0,
-  // En CI, `github` publie chaque échec en annotation du run, lisible sans télécharger le rapport (PFC-022, D48).
-  reporter: [['list'], ...(isCI ? [['github'] as const] : []), ['html', { open: 'never' }]],
+  // En CI, `github` publie les échecs en annotations du run (10 détaillés par étape) et `json` alimente leur liste
+  // complète (scripts/ci-failures.ts), lisibles sans authentification (PFC-022, D48).
+  reporter: [
+    ['list'],
+    ...(isCI ? ([['github'], ['json', { outputFile: 'test-results/results.json' }]] as const) : []),
+    ['html', { open: 'never' }],
+  ],
   // Références visuelles uniques, capturées depuis la maquette (scripts/capture-mockup-baseline.ts).
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   use: {

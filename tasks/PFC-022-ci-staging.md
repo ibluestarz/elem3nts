@@ -104,6 +104,13 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
   build, fonctionnel et ESLint verts ; **Playwright en échec après 21 min** ; artefact non publié et job
   `deploy-staging` sauté (S1 constaté en réel). Journaux illisibles sans authentification GitHub : reporter `github`
   ajouté en CI (chaque échec devient une annotation publique du run) pour diagnostiquer au run suivant.
+- Deuxième run (d74efdb, run 36648162703) : mêmes étapes vertes, Playwright **62 échecs** ; annotations lisibles :
+  22 × `visual.spec.ts` (Chromium, parité maquette à tolérance nulle : 3 000 à 9 700 pixels, ~1 %, écarts stables)
+  et `a11y.spec.ts` PFC-021-S2 (contraste mesuré sur le rendu : 3,69 au lieu de ≥ 4,5) ; 39 autres non nommés (GitHub
+  ne détaille que 10 erreurs par étape). Cause : références capturées sur Ubuntu 22.04 (FreeType 2.11), runner en
+  24.04 (rendu des polices différent). Correctif : runner `ubuntu-22.04` (même distribution que la capture ; la
+  tolérance n'est pas relâchée) ; reporter `json` + `scripts/ci-failures.ts` : liste complète des échecs en une
+  annotation publique.
 - Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright

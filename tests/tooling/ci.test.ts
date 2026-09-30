@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { failures, notice } from '../../scripts/ci-failures.ts';
 import { TARGETS, artifactProblem, isTarget, targetForEnvironment, verifyCommand } from '../../scripts/deploy-target.ts';
 
 /**
@@ -53,6 +54,19 @@ describe('PFC-022-S1 / AC1 — gates de la CI dans l’ordre imposé, aucun dép
     expect(artifact).toBeGreaterThan(e2e);
     expect(verifyJob).toMatch(/if: failure\(\)\n\s+uses: actions\/upload-artifact@\w+ # [\w.]+\n\s+with:\n\s+name: playwright-report/);
     expect([...workflow.matchAll(/retention-days: (\d+)/g)].map((match) => Number(match[1]))).toEqual([7, 7, 7]);
+  });
+
+  it('gates et smoke sur Ubuntu 22.04, la distribution du poste qui capture les références visuelles', () => {
+    expect([...workflow.matchAll(/^ {4}runs-on: (.+)$/gm)].map((match) => match[1])).toEqual(['ubuntu-22.04', 'ubuntu-22.04']);
+  });
+
+  it('en échec, la liste complète des tests en erreur est publiée sans bloquer ni masquer l’échec', () => {
+    expect(verifyJob).toMatch(/if: failure\(\)\n\s+run: node scripts\/ci-failures\.ts test-results\/results\.json/);
+    expect(failures({ suites: [{ specs: [
+      { title: 'a', file: 'x.spec.ts', line: 3, tests: [{ projectName: 'chromium', status: 'unexpected' }, { projectName: 'webkit', status: 'expected' }] },
+    ], suites: [{ specs: [{ title: 'b', file: 'y.spec.ts', line: 9, tests: [{ projectName: 'firefox', status: 'flaky' }] }] }] }] }))
+      .toEqual(['[chromium] x.spec.ts:3 a']);
+    expect(notice('Échecs, 2: fin', ['a 100%', 'b'])).toBe('::notice title=Échecs%2C 2%3A fin::a 100%25%0Ab');
   });
 
   it('un clone propre sort en LF quel que soit `core.autocrlf` du poste (sinon le gate échoue en CRLF)', () => {

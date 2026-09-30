@@ -25,7 +25,9 @@ concurrency:
 jobs:
   verify:
     name: Gates (build → fonctionnel → ESLint → Playwright)
-    runs-on: ubuntu-24.04
+    # Même distribution que le poste qui capture les références visuelles de la maquette (Ubuntu 22.04) : la parité
+    # est au pixel près (D28) et le rendu des polices change avec FreeType (24.04 : 22 écrans à ~1 % de pixels).
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: true
@@ -51,6 +53,9 @@ jobs:
       - run: npm run test:functional
       - run: npm run lint
       - run: npm run test:e2e
+      - name: Liste publique des échecs Playwright (échec seulement)
+        if: failure()
+        run: node scripts/ci-failures.ts test-results/results.json
       - name: Artefact vérifié (dist/)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -75,7 +80,7 @@ jobs:
     name: Déploiement staging et smoke
     needs: verify
     if: github.event_name == 'workflow_dispatch' && inputs.deploy_staging && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     environment:
       name: staging
