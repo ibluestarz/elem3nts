@@ -48,7 +48,7 @@ Le numéro donne un ordre conseillé ; seules les dépendances imposent l'ordre 
 | [PFC-024](done/PFC-024-regles-maquette.md) | Règles de manche de la maquette (5 s, choix unique, manche vide) | M1 | PFC-002, PFC-003 |
 | [PFC-025](done/PFC-025-local-mobile-tour-par-tour.md) | Local mobile tour par tour | M1 | PFC-006 |
 | [PFC-026](done/PFC-026-demo-confrontations.md) | Démo des confrontations | M1 | PFC-008 |
-| [PFC-027](PFC-027-compilation-shaders.md) | Ouverture sans compilation bloquante des shaders (optimisation mesurée, D46) | M3 | PFC-008, PFC-021 |
+| [PFC-027](done/PFC-027-compilation-shaders.md) | Ouverture sans compilation bloquante des shaders (optimisation mesurée, D46, D51) | M3 | PFC-008, PFC-021 |
 
 ## Reprise d'une session agent
 Lire le ticket in_progress s'il existe ; sinon le premier todo avec dépendances done.
