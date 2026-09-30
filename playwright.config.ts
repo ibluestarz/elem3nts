@@ -11,7 +11,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: 0,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // En CI, `github` publie chaque échec en annotation du run, lisible sans télécharger le rapport (PFC-022, D48).
+  reporter: [['list'], ...(isCI ? [['github'] as const] : []), ['html', { open: 'never' }]],
   // Références visuelles uniques, capturées depuis la maquette (scripts/capture-mockup-baseline.ts).
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   use: {

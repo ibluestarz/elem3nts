@@ -100,7 +100,11 @@ Les scénarios ci-dessus ne limitent pas les autres cas exigés par les critère
     805 tests ; ESLint ; Playwright 288 passed, 18 skipped (15,1 min) ; artefact `elem3nts-staging staging`.
   - S1 (`scratchpad/ci-red.sh`) : copie propre, assertion cassée volontairement dans `config.test.ts`, même séquence →
     `test:functional` 1 failed / 804 passed, lint et E2E sautés, `::deploy:: non lancé (needs: verify)`.
-- Limites : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
+- Premier run GitHub Actions (push 00ee498, run 36645895790, ubuntu-24.04) : checkout, Node, `npm ci`, navigateurs,
+  build, fonctionnel et ESLint verts ; **Playwright en échec après 21 min** ; artefact non publié et job
+  `deploy-staging` sauté (S1 constaté en réel). Journaux illisibles sans authentification GitHub : reporter `github`
+  ajouté en CI (chaque échec devient une annotation publique du run) pour diagnostiquer au run suivant.
+- Limites (avant le push) : CI non exécutée sur GitHub (choix du propriétaire : preuve locale, aucun commit ni push) ; `sudo npx
   playwright install-deps` non relancé (dépendances déjà présentes) ; sur GitHub, `install --with-deps` s'en charge.
   - Arbre principal, `npm run verify` (cible production, sans `CLOUDFLARE_ENV`) : EXIT 0 ; Vitest 805/805 ; Playwright
     288 passed, 18 skipped (14,8 min).
