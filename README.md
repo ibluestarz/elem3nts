@@ -3,7 +3,7 @@
 Duel web à deux joueurs inspiré de pierre-feuille-ciseaux : **feu brûle plante, plante absorbe eau, eau éteint
 feu**. On joue à deux sur un même clavier, à tour de rôle sur un seul téléphone, ou en ligne dans une room privée.
 
-**Jouer : https://elem3nts.elem3nts.workers.dev** (version 1.0.0). Aucun compte, aucune installation.
+**Jouer : https://elem3nts.bluestarz.workers.dev** (version 1.0.0). Aucun compte, aucune installation.
 
 ## Comment jouer
 - **Une manche** : chacun a 5 secondes pour choisir un élément ; le premier choix est définitif et reste caché
@@ -46,7 +46,7 @@ Un seul moteur de règles pur (`src/domain/`) sert le jeu local et le serveur ; 
 ## Livrer
 - **CI** (GitHub Actions, `.github/workflows/ci.yml`) : les gates à chaque push et pull request. La staging se
   publie à la demande (Actions → CI → Run workflow, case `deploy_staging`), seulement après des gates verts.
-- **Staging** : https://elem3nts-staging.elem3nts.workers.dev. **Production** : https://elem3nts.elem3nts.workers.dev,
+- **Staging** : https://elem3nts-staging.bluestarz.workers.dev. **Production** : https://elem3nts.bluestarz.workers.dev,
   publiée à la main depuis un commit exact (`npm run deploy:production`).
 - Procédure de livraison, contrôles, retour arrière et incidents : [docs/RUNBOOK.md](docs/RUNBOOK.md).
 

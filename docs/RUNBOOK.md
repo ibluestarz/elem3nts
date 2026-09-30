@@ -70,8 +70,8 @@ append-only ; ne jamais la retirer de `wrangler.jsonc`.
 ## Déployer et revenir en arrière (PFC-022, D48)
 | Environnement | Worker | Adresse | Publication |
 | --- | --- | --- | --- |
-| staging | `elem3nts-staging` | https://elem3nts-staging.elem3nts.workers.dev | CI : Actions → CI → Run workflow (`main`, `deploy_staging`) ; ou local |
-| production | `elem3nts` | https://elem3nts.elem3nts.workers.dev | `npm run deploy:production`, sur demande explicite, depuis un commit exact |
+| staging | `elem3nts-staging` | https://elem3nts-staging.bluestarz.workers.dev | CI : Actions → CI → Run workflow (`main`, `deploy_staging`) ; ou local |
+| production | `elem3nts` | https://elem3nts.bluestarz.workers.dev | `npm run deploy:production`, sur demande explicite, depuis un commit exact |
 
 Les deux Workers ont chacun leurs Durable Objects : rooms, limites et journaux de staging ne touchent jamais la
 production. Le Worker est créé par le premier `wrangler deploy` : ne rien créer dans le tableau de bord, et **ne pas
@@ -80,7 +80,7 @@ activer Cloudflare Access** (il bloquerait les joueurs et les WebSockets).
 **Publier depuis un poste** (accès : `npx wrangler login` par le propriétaire, ou `CLOUDFLARE_API_TOKEN` et
 `CLOUDFLARE_ACCOUNT_ID` exportés, jamais écrits dans un fichier suivi) :
 `CLOUDFLARE_ENV=staging npm run verify && npm run deploy:staging`, puis
-`SMOKE_URL=https://elem3nts-staging.elem3nts.workers.dev npm run test:smoke`. Le script refuse un artefact construit pour
+`SMOKE_URL=https://elem3nts-staging.bluestarz.workers.dev npm run test:smoke`. Le script refuse un artefact construit pour
 une autre cible et publie avec `--strict` (refus si le Worker a été modifié hors dépôt). Chaque version porte le commit
 en tag (12 caractères) et en message (`staging <sha>`, `+ modifications locales` si l'arbre n'était pas propre).
 Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lecture du compte et de l'utilisateur).
@@ -92,7 +92,7 @@ Jeton CI : jeton d'API limité au compte, droits Workers Scripts:Edit (plus lect
 3. Depuis une extraction **propre** de ce commit (`git worktree add --detach <dossier> <sha>`, `npm ci`) :
    `npm run verify` (artefact de production, sans `CLOUDFLARE_ENV`), puis `npm run deploy:production` (refusé si
    l'arbre est modifié ou l'artefact d'une autre cible).
-4. `SMOKE_URL=https://elem3nts.elem3nts.workers.dev npm run test:smoke` (parcours local et room privée) et contrôle
+4. `SMOKE_URL=https://elem3nts.bluestarz.workers.dev npm run test:smoke` (parcours local et room privée) et contrôle
    des en-têtes ; version, commit et résultats consignés dans le ticket de livraison ; tag git `vX.Y.Z` sur le commit.
 
 **Versions publiées** (retour arrière : `npx wrangler rollback <version précédente> --name <worker>`, voir plus bas) :

@@ -7,7 +7,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "elem3nts",
   "main": "src/worker/index.ts",
-  // Production : https://elem3nts.elem3nts.workers.dev (PFC-023, D50). Pas d'URL par version : seule l'adresse publique
+  // Production : https://elem3nts.bluestarz.workers.dev (PFC-023, D50). Pas d'URL par version : seule l'adresse publique
   // sert le jeu (une version non promue resterait joignable).
   "workers_dev": true,
   "preview_urls": false,
@@ -36,7 +36,7 @@
   // Workers Logs : journaux structurés du Worker (log.ts), tous conservés (docs/RUNBOOK.md pour les quotas).
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
-    // https://elem3nts-staging.elem3nts.workers.dev. Clés non héritées par un environnement (liaisons, migrations)
+    // https://elem3nts-staging.bluestarz.workers.dev. Clés non héritées par un environnement (liaisons, migrations)
     // répétées à l'identique ; un test vérifie qu'elles ne divergent jamais de la production.
     "staging": {
       "name": "elem3nts-staging",

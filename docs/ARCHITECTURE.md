@@ -27,9 +27,9 @@ bindings, migrations et secrets. Configurer la migration initiale du Durable Obj
 Pas de serveur Express ni de runtime Node permanent pour les sockets.
 
 ### Environnements, CI et livraison (PFC-022, D48)
-- `wrangler.jsonc` : racine = production (Worker `elem3nts`, https://elem3nts.elem3nts.workers.dev, D50) ;
+- `wrangler.jsonc` : racine = production (Worker `elem3nts`, https://elem3nts.bluestarz.workers.dev, D50) ;
   `env.staging` = Worker `elem3nts-staging`
-  (https://elem3nts-staging.elem3nts.workers.dev), donc namespaces Durable Object et stockage distincts. Liaisons et
+  (https://elem3nts-staging.bluestarz.workers.dev), donc namespaces Durable Object et stockage distincts. Liaisons et
   migrations, non héritées par un environnement, y sont répétées ; `tests/integration/config.test.ts` impose l'égalité.
   Aucune variable ni secret côté Worker : seul le déploiement demande un accès Cloudflare.
 - L'environnement se choisit **au build** (`CLOUDFLARE_ENV`, plugin Vite) : `dist/elem3nts/wrangler.json` est aplati

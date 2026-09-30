@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const target = process.env['SMOKE_URL'];
 if (target === undefined || target === '') {
-  throw new Error('SMOKE_URL requis (ex. https://elem3nts-staging.elem3nts.workers.dev) : aucun smoke sans cible.');
+  throw new Error('SMOKE_URL requis (ex. https://elem3nts-staging.bluestarz.workers.dev) : aucun smoke sans cible.');
 }
 const { protocol, hostname, origin } = new URL(target);
 if (protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(hostname)) {
