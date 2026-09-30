@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join as joinPath } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { host, join, lobbyTitle, player } from './online-driver.ts';
-import { SPLASH_MIN_MS, freezeClock, isolatedContext, stubScene } from './support.ts';
+import { SPLASH_MIN_MS, awaitScene, freezeClock, isolatedContext, stubScene } from './support.ts';
 
 /**
  * PFC-020 — durcissement vu d'un vrai navigateur, contre le build de production servi par workerd :
@@ -77,7 +77,7 @@ test.describe('PFC-020-AC3 — en-têtes de sécurité et CSP', () => {
     await freezeClock(page);
     await page.goto('/');
     await page.getByText('Invocation de l’arène…').waitFor();
-    await page.locator('canvas.scene-canvas:not([data-scene="loading"])').waitFor({ state: 'attached' });
+    await awaitScene(page);
     await page.clock.fastForward(SPLASH_MIN_MS);
     await page.getByRole('button', { name: 'Jouer en local' }).waitFor();
     await expect(page.locator('canvas.scene-canvas')).toHaveAttribute('data-scene', 'ready');

@@ -758,6 +758,21 @@ export async function freezeClock(page: Page): Promise<void> {
   await page.clock.pauseAt(now + 1000);
 }
 
+/**
+ * Attend la fin du chargement de la scène sous horloge figée : les programmes WebGL se compilent pendant l'écran
+ * d'ouverture (`warm`, PFC-027), dont le suivi est minuté. L'horloge avance donc au rythme du temps réel, par pas de
+ * 10 ms, jusqu'à ce que la scène soit prête ou en repli. Sans horloge qui avance, la vraie scène resterait « en
+ * chargement ». Le moteur bouchonné n'est pas concerné : sa compilation se termine immédiatement.
+ */
+export async function awaitScene(page: Page): Promise<void> {
+  const canvas = page.locator('canvas.scene-canvas');
+  await canvas.waitFor({ state: 'attached' });
+  while ((await canvas.getAttribute('data-scene')) === 'loading') {
+    await page.waitForTimeout(10);
+    await page.clock.runFor(10);
+  }
+}
+
 /** Durée minimale de l'écran d'ouverture (`SPLASH_MIN_MS`, src/client/App.tsx). */
 export const SPLASH_MIN_MS = 600;
 

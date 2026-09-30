@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { readPreferences } from '../state/preferences.ts';
 import type { Engine } from './engine.js';
 import { SCENE_LOADING, sceneFallback, type SceneState } from './sceneContext.ts';
 
@@ -64,6 +65,11 @@ export function webgl2Available(): boolean {
  * (StrictMode compris : un démontage avant l'arrivée du module n'en crée aucun). Échec, délai
  * dépassé ou contexte perdu : repli DOM, le jeu continue.
  *
+ * Les programmes WebGL sont compilés pendant l'écran d'ouverture sans bloquer le fil principal (`warm`, PFC-027),
+ * dans la qualité enregistrée (le pont la réapplique ensuite sans recompiler) ; `ready` une fois la boucle démarrée.
+ * La compilation se termine au plus tard à l'échéance des 8 s : au-delà, le rendu démarre et finit de compiler au
+ * premier rendu, comme avant PFC-027. Le délai de chargement reste levé dès la construction (repli inchangé).
+ *
  * Le canvas est reçu par ref-callback : StrictMode (React 19) détache puis rattache les refs, un
  * canvas absent signifie « pas encore monté », jamais « pas de 3D » (mesuré : repli à tort sinon).
  */
@@ -80,6 +86,7 @@ export function useSceneHost(canvas: HTMLCanvasElement | null): SceneState {
     let active = true;
     let engine: Engine | null = null;
     let stopWatch = noop;
+    const started = performance.now();
     const timeout = window.setTimeout(() => {
       if (!engine) {
         active = false;
@@ -88,18 +95,25 @@ export function useSceneHost(canvas: HTMLCanvasElement | null): SceneState {
     }, SCENE_LOAD_TIMEOUT_MS);
 
     import('./engine.js')
-      .then((module) => {
+      .then(async (module) => {
         if (!active) return;
         const created = new module.Engine(canvas);
         engine = created;
         window.clearTimeout(timeout);
+        let lost = false;
         created.onTrinity = (points) => {
           setState((current) => (current.engine === created ? { ...current, trinity: points } : current));
         };
         created.onContextLost = () => {
+          lost = true;
           stopWatch();
           setState(sceneFallback('lost'));
         };
+        // Démontage, perte de contexte ou moteur remplacé pendant la compilation : ce moteur ne sera jamais prêt.
+        const superseded = () => !active || lost || engine !== created;
+        created.setQuality(readPreferences().quality);
+        await created.warm(SCENE_LOAD_TIMEOUT_MS - (performance.now() - started));
+        if (superseded()) return;
         if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('perf')) {
           // Sonde de temps d'image (PFC-021, développement seulement) : le chien de garde ne coupe pas la mesure.
           void import('./perfProbe.ts').then((probe) => probe.runProbe(created, canvas));
@@ -114,7 +128,11 @@ export function useSceneHost(canvas: HTMLCanvasElement | null): SceneState {
         setState({ status: 'ready', reason: null, engine: created, trinity: created.getTrinity() });
       })
       .catch(() => {
-        if (active) setState(sceneFallback('failed'));
+        if (!active) return;
+        stopWatch();
+        engine?.destroy();
+        engine = null;
+        setState(sceneFallback('failed'));
       });
 
     return () => {

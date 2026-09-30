@@ -20,6 +20,10 @@ describe('PFC-008 — moteur 3D porté depuis la maquette (D33)', () => {
     const code = ported.slice(ported.indexOf('*/') + 2);
     expect(code).not.toMatch(/cdn\.jsdelivr|window\.__e3|window\.Elem3ntsEngine/);
     expect(code).toContain('forceContextLoss()');
+    // PFC-027 : la boucle n'est demandée que par `warm` (après compilation) et par elle-même, jamais à la construction.
+    expect(code.split('requestAnimationFrame(this._loop)')).toHaveLength(3);
+    expect(code).toMatch(/\n warm\(ms\)\{[^\n]*requestAnimationFrame\(this\._loop\)/);
+    expect(code).toMatch(/\n loop\(\)\{this\.raf=requestAnimationFrame\(this\._loop\)/);
   });
 
   it('refuse une maquette où un correctif ne trouve plus sa cible', () => {

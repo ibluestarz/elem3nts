@@ -2,7 +2,16 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const engines = vi.hoisted(() => ({ created: 0, destroyed: 0, fail: false, instances: [] as { onContextLost?: () => void }[] }));
+const engines = vi.hoisted(() => ({
+  created: 0,
+  destroyed: 0,
+  fail: false,
+  instances: [] as { onContextLost?: () => void }[],
+  /** Journal des appels (qualité, compilation) ; `hold` retient la compilation jusqu'à `release`. */
+  calls: [] as string[],
+  hold: false,
+  release: (): void => undefined,
+}));
 
 vi.mock('../../../src/client/scene/engine.js', () => ({
   Engine: class {
@@ -15,6 +24,16 @@ vi.mock('../../../src/client/scene/engine.js', () => ({
     }
     getTrinity() {
       return [];
+    }
+    setQuality(quality: string) {
+      engines.calls.push(`quality:${quality}`);
+    }
+    warm(budgetMs: number) {
+      engines.calls.push(`warm:${String(budgetMs > 0 && budgetMs <= 8000)}`);
+      if (!engines.hold) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        engines.release = resolve;
+      });
     }
     destroy() {
       engines.destroyed += 1;
@@ -44,7 +63,8 @@ const settle = () =>
   });
 
 beforeEach(() => {
-  Object.assign(engines, { created: 0, destroyed: 0, fail: false, instances: [] });
+  Object.assign(engines, { created: 0, destroyed: 0, fail: false, instances: [], calls: [], hold: false, release: () => undefined });
+  localStorage.clear();
   vi.stubGlobal('WebGL2RenderingContext', WebGL2Stub);
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ getExtension: () => null } as never);
 });
@@ -110,5 +130,70 @@ describe('PFC-008-AC3 — hôte de scène', () => {
     render(<Host />);
     expect(status()).toBe('fallback');
     expect(engines.created).toBe(0);
+  });
+});
+
+describe('PFC-027 — compilation des programmes pendant l’écran d’ouverture', () => {
+  /** Le module 3D est arrivé et le moteur construit : la compilation est en cours. */
+  const compiling = () =>
+    waitFor(() => {
+      expect(engines.calls).toContain('warm:true');
+    });
+
+  it('reste « en chargement » tant que la compilation n’est pas terminée, puis prêt', async () => {
+    engines.hold = true;
+    render(<Host />);
+    await compiling();
+    expect(status()).toBe('loading');
+    await act(async () => {
+      engines.release();
+      await Promise.resolve();
+    });
+    await settle();
+    expect(status()).toBe('ready');
+  });
+
+  it('compile dans la qualité enregistrée, appliquée avant la compilation, budget dans les 8 s', async () => {
+    localStorage.setItem('elem3nts.prefs.v1', JSON.stringify({ quality: 'low' }));
+    vi.resetModules();
+    const fresh = await import('../../../src/client/scene/useSceneHost.ts');
+    function FreshHost() {
+      const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+      const { status: current } = fresh.useSceneHost(canvas);
+      return <canvas ref={setCanvas} data-testid="scene" data-scene={current} />;
+    }
+    render(<FreshHost />);
+    await settle();
+    expect(engines.calls).toEqual(['quality:low', 'warm:true']);
+  });
+
+  it('démontage pendant la compilation : moteur détruit, jamais prêt', async () => {
+    engines.hold = true;
+    const { unmount } = render(<Host />);
+    await compiling();
+    unmount();
+    expect(engines.destroyed).toBe(1);
+    await act(async () => {
+      engines.release();
+      await Promise.resolve();
+    });
+    expect(engines.destroyed).toBe(1);
+  });
+
+  it('contexte perdu pendant la compilation : repli « lost », jamais prêt ensuite', async () => {
+    engines.hold = true;
+    const { unmount } = render(<Host />);
+    await compiling();
+    act(() => {
+      engines.instances[0]?.onContextLost?.();
+    });
+    await act(async () => {
+      engines.release();
+      await Promise.resolve();
+    });
+    expect(status()).toBe('fallback');
+    expect(screen.getByTestId('scene').dataset['reason']).toBe('lost');
+    unmount();
+    expect(engines.destroyed).toBe(1);
   });
 });

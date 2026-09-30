@@ -13,7 +13,14 @@ export interface TrinityPoint {
 }
 
 export class Engine {
+  /** Construit la scène sans rendre aucune image : `warm` démarre la boucle (PFC-027). */
   constructor(canvas: HTMLCanvasElement);
+  /**
+   * Compile les programmes de la scène sans bloquer le fil principal (`KHR_parallel_shader_compile` ; sans
+   * l'extension, résolu aussitôt), puis démarre la boucle d'image. Au-delà de `budgetMs`, démarre quand même (les
+   * programmes restants se compilent au premier rendu). Moteur détruit ou contexte perdu : résolu sans rien démarrer.
+   */
+  warm(budgetMs: number): Promise<void>;
   /** Appelé quand les positions écran de la trinité changent (toutes les 0,25 s au plus). */
   onTrinity?: (points: readonly TrinityPoint[]) => void;
   /** Appelé si le contexte WebGL est perdu : le rendu s'arrête, le jeu continue dans le DOM. */

@@ -3,6 +3,7 @@ import {
   SCENE_HOME_FRAMES_MS,
   SCENE_TOLERANCE,
   SPLASH_MIN_MS,
+  awaitScene,
   freezeClock,
   hideInterface,
   seedRandomOnWebGL,
@@ -29,7 +30,7 @@ async function openHome(page: Page): Promise<void> {
   await freezeClock(page);
   await page.goto('/');
   await page.getByText('Invocation de l’arène…').waitFor();
-  await page.locator('canvas.scene-canvas:not([data-scene="loading"])').waitFor({ state: 'attached' });
+  await awaitScene(page);
   await leap(page, SPLASH_MIN_MS, () => page.getByRole('button', { name: 'Jouer en local' }).waitFor());
 }
 
@@ -106,12 +107,92 @@ test.describe('PFC-008 — scène 3D réelle (Chromium, rendu logiciel)', () => 
     await seedRandomOnWebGL(page);
     await freezeClock(page);
     await page.goto('/');
-    await page.locator('canvas.scene-canvas[data-scene="ready"]').waitFor({ state: 'attached' });
+    await awaitScene(page);
+    await expect(page.locator('canvas.scene-canvas')).toHaveAttribute('data-scene', 'ready');
     await page.clock.runFor(SCENE_HOME_FRAMES_MS);
     await hideInterface(page);
 
     await expect(page).toHaveScreenshot('scene-home-1280x800.png', SCENE_TOLERANCE);
   });
+
+  /**
+   * Compilation parallèle des shaders (PFC-027). SwiftShader (gate, CI) n'expose pas `KHR_parallel_shader_compile` :
+   * le chemin S1 y est simulé (extension présente, chaque programme prêt à sa 3e interrogation) pour exercer le suivi
+   * sans blocage ; le vrai GPU est mesuré par `npm run measure:load` (D46). S2 retire l'extension.
+   */
+  for (const mode of ['simulated', 'hidden'] as const) {
+    const title =
+      mode === 'simulated'
+        ? 'PFC-027-S1 — compilation suivie sans bloquer, scène prête une fois les programmes compilés'
+        : 'PFC-027-S2 — navigateur sans compilation parallèle : comportement d’avant, sans erreur';
+    test(title, async ({ page }) => {
+      const problems = trackProblems(page);
+      await page.addInitScript((simulate: boolean) => {
+        const NAME = 'KHR_parallel_shader_compile';
+        const COMPLETION_STATUS_KHR = 0x91b1;
+        const stats = { queries: 0, programs: 0, linkedInLoop: 0 };
+        Object.defineProperty(window, '__compile', { value: stats });
+        const proto = WebGL2RenderingContext.prototype;
+        const original = (name: string) =>
+          Object.getOwnPropertyDescriptor(proto, name)?.value as (this: WebGL2RenderingContext, ...args: unknown[]) => unknown;
+        const [getExtension, getSupportedExtensions, getProgramParameter] = [
+          original('getExtension'),
+          original('getSupportedExtensions'),
+          original('getProgramParameter'),
+        ];
+        const asked = new WeakMap<WebGLProgram, number>();
+        const define = (name: string, value: (this: WebGL2RenderingContext, ...args: never[]) => unknown) => {
+          Object.defineProperty(proto, name, { configurable: true, value });
+        };
+        define('getExtension', function (this: WebGL2RenderingContext, name: string) {
+          if (name !== NAME) return getExtension.call(this, name);
+          return simulate ? { COMPLETION_STATUS_KHR } : null;
+        });
+        define('getSupportedExtensions', function (this: WebGL2RenderingContext) {
+          const names = ((getSupportedExtensions.call(this) as string[] | null) ?? []).filter((name) => name !== NAME);
+          return simulate ? [...names, NAME] : names;
+        });
+        // Programmes liés par une image de la boucle (pile : méthode `step` du moteur, nom conservé par la minification).
+        const linkProgram = original('linkProgram');
+        define('linkProgram', function (this: WebGL2RenderingContext, program: WebGLProgram) {
+          const limit = Error.stackTraceLimit;
+          Error.stackTraceLimit = 100;
+          if (/\.step\b/.test(new Error().stack ?? '')) stats.linkedInLoop += 1;
+          Error.stackTraceLimit = limit;
+          return linkProgram.call(this, program);
+        });
+        define('getProgramParameter', function (this: WebGL2RenderingContext, program: WebGLProgram, name: number) {
+          if (name !== COMPLETION_STATUS_KHR) return getProgramParameter.call(this, program, name);
+          stats.queries += 1;
+          const count = (asked.get(program) ?? 0) + 1;
+          if (count === 1) stats.programs += 1;
+          asked.set(program, count);
+          return count >= 3;
+        });
+      }, mode === 'simulated');
+      await openHome(page);
+      await expect(page.locator('canvas.scene-canvas')).toHaveAttribute('data-scene', 'ready');
+      await page.clock.runFor(100);
+
+      const { queries, programs, linkedInLoop } = await page.evaluate(
+        () => (window as unknown as { __compile: { queries: number; programs: number; linkedInLoop: number } }).__compile,
+      );
+      // Tout ce que la 1re image dessine est compilé par `warm`, sauf les 3 programmes de profondeur des ombres (qualité
+      // haute), internes à three.js (D51). Visibilité des acteurs ou variantes de transmission oubliées : +10 à +30.
+      expect(linkedInLoop).toBeLessThanOrEqual(3);
+      if (mode === 'simulated') {
+        // Chaque programme interrogé jusqu'à sa 3e réponse : prêt seulement après plusieurs tours de suivi.
+        expect(programs).toBeGreaterThan(10);
+        expect(queries).toBeGreaterThanOrEqual(programs * 3);
+      } else {
+        // Sans l'extension, three.js tient chaque programme pour prêt : aucune interrogation, rendu comme avant.
+        expect(queries).toBe(0);
+      }
+      await page.getByRole('button', { name: 'Jouer en local' }).click();
+      await expect(page.getByRole('button', { name: /^Commencer/ })).toBeVisible();
+      expect(appProblems(problems)).toEqual([]);
+    });
+  }
 
   test('PFC-008-AC1 / S1 — feu+feu, eau+eau et plante+plante : effets distincts et explications', async ({ page }, testInfo) => {
     const effects: [string, readonly string[], ClashKind, string][] = [

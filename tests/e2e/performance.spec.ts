@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { expect, test, type Page } from '@playwright/test';
-import { SPLASH_MIN_MS, freezeClock, trackProblems } from './support.ts';
+import { SPLASH_MIN_MS, awaitScene, freezeClock, trackProblems } from './support.ts';
 import { CYCLE, clashDelays } from './timing.ts';
 
 /**
@@ -113,7 +113,8 @@ test.describe('PFC-021-AC3 — 20 revanches avec la vraie scène 3D', () => {
     });
     await freezeClock(page);
     await page.goto('/');
-    await page.locator('canvas.scene-canvas[data-scene="ready"]').waitFor({ state: 'attached' });
+    await awaitScene(page);
+    await expect(page.locator('canvas.scene-canvas')).toHaveAttribute('data-scene', 'ready');
     // Le chien de garde (D33) mesure 25 images au démarrage : de vraies images de 16 ms, pas des bonds.
     for (let frame = 0; frame < 26; frame++) await page.clock.runFor(16);
     await leap(page, SPLASH_MIN_MS, () => page.getByRole('button', { name: 'Jouer en local' }).waitFor());

@@ -340,6 +340,25 @@ Depuis PFC-026 (démo des confrontations, D49) :
   (`security.spec.ts`, 8 s seul) avec les tests 3D réels de `scene.spec.ts` et `performance.spec.ts` : délai de 30 s
   dépassé deux fois de suite (32 s). Délai porté à 120 s, comme les autres tests en rendu logiciel. La borne X = 10
   (`local.spec.ts`, une vingtaine de manches, 22 s seule sous WebKit, 33,5 s une fois au gate) passe en `test.slow()`.
+Depuis PFC-027 (ouverture sans compilation bloquante, D51) :
+- **Unitaires** `sceneHost.test.tsx` : la scène reste « en chargement » tant que `warm` n'est pas résolu ; qualité
+  enregistrée appliquée avant `warm`, budget dans les 8 s ; démontage pendant `warm` → moteur détruit, jamais prêt ;
+  contexte perdu pendant `warm` → repli « lost », jamais prêt ensuite. `engine-port.test.ts` : la boucle n'est
+  demandée que par `warm` et par elle-même, jamais à la construction. Délai de 8 s et chien de garde inchangés.
+- **E2E** `scene.spec.ts` (Chromium, vraie scène) : PFC-027-S1 (extension simulée, chaque programme prêt à sa 3e
+  interrogation : suivi sur plusieurs tours, accueil jouable, aucune erreur) et PFC-027-S2 (extension retirée : aucune
+  interrogation, comportement d'avant, aucune erreur). Dans les deux cas, les images de la boucle ne lient pas plus de
+  3 programmes (ombres) : tout le reste vient de `warm`. SwiftShader (gate, CI) n'expose pas `KHR_parallel_shader_compile`.
+  Les attentes de la vraie scène sous horloge figée (`scene.spec.ts`, `performance.spec.ts`, CSP de
+  `security.spec.ts`) passent par `awaitScene` : l'horloge avance au rythme réel par pas de 10 ms jusqu'à la fin du
+  chargement (attente d'un état observable ; sans elle, la compilation suivie ne progresserait pas). Parité 3D avec
+  la maquette inchangée, aucune capture régénérée.
+- Mutations contrôlées (restaurées), détectées : alignement de visibilité retiré de `warm` (34 programmes liés par la
+  boucle, S1/S2 échouent) ; hôte qui n'attend plus `warm` (unitaire « reste en chargement » échoue). La cible de rendu
+  créée dans `warm` décalait la suite aléatoire (parité 3D : 609 pixels, hors tolérance) : créée avant le contexte.
+- **Mesures hors gate** : `measure:load` relève aussi le blocage du fil principal jusqu'à l'accueil (somme des tâches
+  longues au-delà de 50 ms, plus longue tâche). Avant/après et diagnostic : D46, D51, ARCHITECTURE « Rendu et qualité ».
+
 Pour un ticket purement documentaire : liens, IDs, cohérence et diff suffisent ; ne pas prétendre
 que le build a été exécuté dans un dossier sans application. Pour les tickets code, exécuter les
 gates disponibles, noter précisément ceux que les dépendances ne permettent pas encore.

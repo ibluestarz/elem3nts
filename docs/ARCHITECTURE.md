@@ -368,7 +368,11 @@ Pas de setState React à chaque frame. Noter machine et navigateur lors des mesu
 | PFC-021, bundles (gzip -9) | principal 98 ko (React DOM ≈ 2/3), moteur 140 ko (541 ko bruts), CSS 9 ko |
 | PFC-021, ouverture (`npm run measure:load`, RTT 150 ms, 1,6 Mbit/s, CPU ×4, 9 passages) | froid : moteur 2,3 → 5,7 s, accueil 9,5 s ; visite suivante 5,4 s → **4,5 s** avec le cache `immutable` de `/assets/*` (0 revalidation) |
 | Téléphone réel (iPhone, iOS 26.6.2, Apple GPU, WebKit (app Google), 428×745 @3x, 2026-09-29, sonde `?perf`) | médiane 17 ms (60 i/s) à toutes qualités, repos et effets ; p95 17–18 ms ; max 20–126 ms ; éclairs 0/s, variation ≤ 0,024 |
+| PFC-027, ouverture (2026-09-30, i5-1155G7, Iris Xe via D3D12/WSLg, Chromium 153 avec fenêtre, `npm run measure:load`, RTT 150 ms, 1,6 Mbit/s, CPU ×4 ; builds avant/après servis côte à côte, séries de 9 en alternance avant-après-après-avant) | froid : accueil **10 323 / 10 252 → 8 397 / 8 289 ms**, blocage > 50 ms ≈ 4 030 → 2 025 ms, plus longue tâche ≈ 2 800 → 765 ms ; visite suivante 5 580 / 5 195 → 4 650 / 4 719 ms ; `measure:scene` inchangé (médiane 16,7 ms) |
 
 Chien de garde (D33) conservé à 150 ms : ≈ 9× le temps d'image GPU mesuré, sous le meilleur rendu logiciel (521 ms).
-Goulot de l'ouverture à froid : la compilation synchrone des programmes au premier rendu (`getUniforms` de three.js,
-≈ 2,7 s sous CPU ×4, profil CDP) ; compilation asynchrone proposée en PFC-027.
+Ouverture à froid (PFC-027, D51) : la première image initialisait chaque programme par des appels synchrones intercalés
+entre des dessins (`getUniforms` de three.js, ≈ 2,7 s sous CPU ×4), chacun attendant la compilation paresseuse du pilote.
+Le moteur compile désormais, pendant l'écran d'ouverture et sans bloquer (`warm`), les programmes de la première image
+(dont les variantes de la passe de transmission), lit leurs uniformes avant tout dessin, puis démarre sa boucle ; seuls
+les programmes d'ombre restent compilés par la première image.

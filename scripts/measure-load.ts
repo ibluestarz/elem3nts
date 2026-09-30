@@ -4,7 +4,8 @@
  * Lighthouse (RTT 150 ms, 1,6 Mbit/s, processeur ×4), cache froid puis visite suivante.
  *
  * Relevés : début et fin du téléchargement du moteur 3D (`engine-*.js`), fin de l'écran d'ouverture (accueil
- * interactif), requêtes revalidées (304) à la visite suivante. Chromium avec fenêtre : GPU réel (sans elle,
+ * interactif), blocage du fil principal jusque-là (tâches longues : somme au-delà de 50 ms, comme le TBT, et la plus
+ * longue, PFC-027), requêtes revalidées (304) à la visite suivante. Chromium avec fenêtre : GPU réel (sans elle,
  * l'initialisation du moteur en rendu logiciel dominerait la mesure). Résultats et variantes comparées : D46.
  *
  * Usage : npm run measure:load            (URL par défaut http://localhost:4173/, 5 passages ; RUNS=9 pour plus)
@@ -20,8 +21,19 @@ interface Load {
   readonly engineStart: number;
   readonly engineEnd: number;
   readonly interactive: number;
+  readonly blocking: number;
+  readonly longest: number;
   readonly revalidated: number;
 }
+
+/** Tâches longues depuis le début de la navigation (posé avant tout script de la page). */
+const OBSERVE_LONG_TASKS = () => {
+  const tasks: { start: number; duration: number }[] = [];
+  (window as unknown as { __longTasks: typeof tasks }).__longTasks = tasks;
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) tasks.push({ start: entry.startTime, duration: entry.duration });
+  }).observe({ type: 'longtask', buffered: true });
+};
 
 async function load(page: Page): Promise<Load> {
   let revalidated = 0;
@@ -35,7 +47,17 @@ async function load(page: Page): Promise<Load> {
     const engine = (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).find((entry) =>
       /\/assets\/engine-[^/]+\.js$/.test(entry.name),
     );
-    return { engineStart: engine?.startTime ?? -1, engineEnd: engine?.responseEnd ?? -1, interactive: performance.now() };
+    const interactive = performance.now();
+    const tasks = (window as unknown as { __longTasks: { start: number; duration: number }[] }).__longTasks.filter(
+      (task) => task.start < interactive,
+    );
+    return {
+      engineStart: engine?.startTime ?? -1,
+      engineEnd: engine?.responseEnd ?? -1,
+      interactive,
+      blocking: tasks.reduce((sum, task) => sum + Math.max(0, task.duration - 50), 0),
+      longest: tasks.reduce((max, task) => Math.max(max, task.duration), 0),
+    };
   });
   page.off('response', onResponse);
   return { ...timing, revalidated };
@@ -49,6 +71,7 @@ const warm: Load[] = [];
 try {
   for (let run = 0; run < RUNS; run++) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'fr-FR' });
+    await context.addInitScript(OBSERVE_LONG_TASKS);
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     await cdp.send('Network.enable');
@@ -64,10 +87,12 @@ try {
 
 const row = (label: string, loads: readonly Load[]) => {
   const pick = (key: keyof Load) => Math.round(median(loads.map((entry) => entry[key])));
-  return `| ${label} | ${String(pick('engineStart'))} | ${String(pick('engineEnd'))} | ${String(pick('interactive'))} | ${String(pick('revalidated'))} |`;
+  return `| ${label} | ${String(pick('engineStart'))} | ${String(pick('engineEnd'))} | ${String(pick('interactive'))} | ${String(pick('blocking'))} | ${String(pick('longest'))} | ${String(pick('revalidated'))} |`;
 };
 console.log(`Ouverture — ${url} — médianes de ${String(RUNS)} passages, RTT 150 ms, 1,6 Mbit/s, processeur ×${String(CPU_SLOWDOWN)}`);
-console.log('| Visite | Moteur : début (ms) | Moteur : fin (ms) | Accueil interactif (ms) | Requêtes 304 |');
-console.log('| --- | --- | --- | --- | --- |');
+console.log(
+  '| Visite | Moteur : début (ms) | Moteur : fin (ms) | Accueil interactif (ms) | Blocage > 50 ms (ms) | Plus longue tâche (ms) | Requêtes 304 |',
+);
+console.log('| --- | --- | --- | --- | --- | --- | --- |');
 console.log(row('cache froid', cold));
 console.log(row('visite suivante', warm));
